@@ -6,14 +6,8 @@ import {
   Receipt, 
   Share2, 
   QrCode, 
-  CheckCircle, 
-  Clock, 
   Calendar, 
-  Download, 
-  CreditCard,
-  Send,
-  Sparkles,
-  ChevronRight
+  CreditCard
 } from 'lucide-react';
 import UPIPaymentModal from './UPIPaymentModal';
 
@@ -25,7 +19,6 @@ export default function BillingLedger() {
   const currentMonthStr = new Date().toISOString().substring(0, 7);
   const [selectedMonth, setSelectedMonth] = useState(currentMonthStr);
   const [ledgerData, setLedgerData] = useState([]);
-  const [selectedLedgerItem, setSelectedLedgerItem] = useState(null);
   const [qrModalItem, setQrModalItem] = useState(null);
   const [paymentInputItem, setPaymentInputItem] = useState(null);
   const [payAmount, setPayAmount] = useState('');
@@ -105,10 +98,10 @@ Thank you!`;
               <span>{t('billing')}</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-black mt-1">
-              மாதாந்திர வசூல் கணக்கு
+              {t('monthlyCollectionLedger')}
             </h2>
             <p className="text-xs text-slate-400 mt-0.5">
-              வாட்ஸ்அப் ரசீது & UPI பரிவர்த்தனை மேலாண்மை
+              {t('whatsappUpiSubtitle')}
             </p>
           </div>
 
@@ -127,28 +120,28 @@ Thank you!`;
         {/* Aggregate KPI Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-5">
           <div className="bg-slate-800/50 p-3.5 rounded-2xl border border-slate-700/60">
-            <span className="text-[11px] text-slate-400 font-semibold block">மொத்த பால் அளவு</span>
+            <span className="text-[11px] text-slate-400 font-semibold block">{t('totalMilkVolume')}</span>
             <span className="text-xl sm:text-2xl font-black text-white mt-1 block">
               {totalLitres.toFixed(1)} <span className="text-xs font-normal">L</span>
             </span>
           </div>
 
           <div className="bg-slate-800/50 p-3.5 rounded-2xl border border-slate-700/60">
-            <span className="text-[11px] text-slate-400 font-semibold block">மொத்த பில் தொகை</span>
+            <span className="text-[11px] text-slate-400 font-semibold block">{t('totalBillAmount')}</span>
             <span className="text-xl sm:text-2xl font-black text-white mt-1 block">
               ₹{totalBill.toLocaleString()}
             </span>
           </div>
 
           <div className="bg-emerald-950/40 p-3.5 rounded-2xl border border-emerald-700/50">
-            <span className="text-[11px] text-emerald-300 font-semibold block">வசூலான தொகை</span>
+            <span className="text-[11px] text-emerald-300 font-semibold block">{t('collectedAmount')}</span>
             <span className="text-xl sm:text-2xl font-black text-emerald-400 mt-1 block">
               ₹{totalPaid.toLocaleString()}
             </span>
           </div>
 
           <div className="bg-rose-950/40 p-3.5 rounded-2xl border border-rose-700/50">
-            <span className="text-[11px] text-rose-300 font-semibold block">பாக்கி வர வேண்டியது</span>
+            <span className="text-[11px] text-rose-300 font-semibold block">{t('outstandingAmount')}</span>
             <span className="text-xl sm:text-2xl font-black text-rose-300 mt-1 block">
               ₹{totalPending.toLocaleString()}
             </span>
@@ -159,9 +152,6 @@ Thank you!`;
       {/* Customer Ledger List */}
       <div className="space-y-3">
         {ledgerData.map((item) => {
-          const isPaid = item.balanceDue === 0 && item.totalAmount > 0;
-          const isPending = item.balanceDue > 0;
-
           return (
             <div
               key={item.customer.id}
@@ -187,8 +177,8 @@ Thank you!`;
                       {item.customer.street} • Tel: {item.customer.phone}
                     </p>
                     <p className="text-[11px] font-medium text-slate-600 mt-1">
-                      விநியோகம்: <strong className="text-emerald-700">{item.deliveredDays} நாட்கள்</strong> ({item.totalLitres} L) • 
-                      விடுப்பு: <strong className="text-slate-500">{item.skippedDays} நாட்கள்</strong>
+                      {t('deliveredDaysLabel')} <strong className="text-emerald-700">{item.deliveredDays} {t('days')}</strong> ({item.totalLitres} L) • 
+                      {t('leaveDaysLabel')} <strong className="text-slate-500">{item.skippedDays} {t('days')}</strong>
                     </p>
                   </div>
                 </div>
@@ -198,17 +188,17 @@ Thank you!`;
                   
                   {/* Amount Breakdown */}
                   <div className="text-left lg:text-right mr-2">
-                    <span className="text-[10px] text-slate-400 block font-semibold">பில் தொகை</span>
+                    <span className="text-[10px] text-slate-400 block font-semibold">{t('billAmount')}</span>
                     <span className="text-lg font-black text-slate-900 block">
                       ₹{item.totalAmount}
                     </span>
                     {item.balanceDue > 0 ? (
                       <span className="text-xs font-extrabold text-rose-600">
-                        பாக்கி: ₹{item.balanceDue}
+                        {t('balanceDueLabel')} ₹{item.balanceDue}
                       </span>
                     ) : (
                       <span className="text-xs font-extrabold text-emerald-600">
-                        ✓ முழுதும் செலுத்தப்பட்டது
+                        {t('fullyPaid')}
                       </span>
                     )}
                   </div>
@@ -217,17 +207,17 @@ Thank you!`;
                   <button
                     onClick={() => handleSendWhatsApp(item)}
                     className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold transition shadow-sm"
-                    title="Send WhatsApp Bill"
+                    title={t('sendWhatsApp')}
                   >
                     <Share2 className="w-3.5 h-3.5 text-emerald-700" />
-                    <span>வாட்ஸ்அப் பில்</span>
+                    <span>{t('whatsappBillBtn')}</span>
                   </button>
 
                   {/* UPI QR Code Modal Trigger */}
                   <button
                     onClick={() => setQrModalItem(item)}
                     className="flex items-center space-x-1 px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition shadow-sm"
-                    title="Generate Scan & Pay UPI QR"
+                    title={t('scanUpiPay')}
                   >
                     <QrCode className="w-3.5 h-3.5 text-emerald-400" />
                     <span>UPI QR</span>
@@ -242,7 +232,7 @@ Thank you!`;
                     className="flex items-center space-x-1 px-3 py-2 rounded-xl bg-amber-400 hover:bg-amber-500 text-slate-900 text-xs font-black transition shadow-sm"
                   >
                     <CreditCard className="w-3.5 h-3.5" />
-                    <span>பணம் பதிவு</span>
+                    <span>{t('recordPaymentBtn')}</span>
                   </button>
 
                 </div>
@@ -275,7 +265,7 @@ Thank you!`;
           <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 space-y-4">
             <div className="flex items-center justify-between border-b pb-3">
               <h3 className="font-extrabold text-slate-900 text-base">
-                கட்டணம் பதிவு (Record Payment)
+                {t('recordPaymentTitle')}
               </h3>
               <button 
                 onClick={() => setPaymentInputItem(null)}
@@ -286,14 +276,14 @@ Thank you!`;
             </div>
 
             <p className="text-xs text-slate-600">
-              வாடிக்கையாளர்: <strong className="text-slate-900">{paymentInputItem.customer.name}</strong><br />
-              மொத்த பில்: ₹{paymentInputItem.totalAmount} | பாக்கி: <strong className="text-rose-600">₹{paymentInputItem.balanceDue}</strong>
+              {t('customerLabel')} <strong className="text-slate-900">{paymentInputItem.customer.name}</strong><br />
+              {t('totalBillAmount')}: ₹{paymentInputItem.totalAmount} | {t('balanceDueLabel')} <strong className="text-rose-600">₹{paymentInputItem.balanceDue}</strong>
             </p>
 
             <form onSubmit={handleSavePayment} className="space-y-4">
               <div>
                 <label className="text-xs font-bold text-slate-700 block mb-1">
-                  செலுத்திய தொகை (₹)
+                  {t('paidAmountLabel')}
                 </label>
                 <input
                   type="number"
@@ -310,13 +300,13 @@ Thank you!`;
                   onClick={() => setPaymentInputItem(null)}
                   className="w-1/2 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-100"
                 >
-                  ரத்து செய்க
+                  {t('cancel')}
                 </button>
                 <button
                   type="submit"
                   className="w-1/2 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-200"
                 >
-                  சேமிக்க ✅
+                  {t('saveBtn')}
                 </button>
               </div>
             </form>

@@ -8,10 +8,7 @@ import {
   PhoneCall, 
   Clock, 
   MapPin, 
-  Filter, 
-  Sparkles, 
   CheckCheck, 
-  AlertTriangle,
   RotateCcw
 } from 'lucide-react';
 
@@ -42,7 +39,7 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
       'DELIVERED',
       finalQty,
       extraLitres,
-      extraLitres > 0 ? `கூடுதல்: ${extraLitres}L` : ''
+      extraLitres > 0 ? `+${extraLitres}L` : ''
     );
     loadData();
   };
@@ -56,7 +53,7 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
       'SKIPPED',
       0,
       0,
-      'இன்று தேவையில்லை (Skipped)'
+      t('markedSkipped')
     );
     loadData();
   };
@@ -77,7 +74,7 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
 
   // Mark all pending
   const handleMarkAllPendingDone = () => {
-    if (window.confirm(lang === 'ta' ? 'மீதமுள்ள அனைத்து வீடுகளுக்கும் பால் போட்டதாக குறிக்கவா?' : 'Mark all remaining pending houses as delivered?')) {
+    if (window.confirm(t('confirmMarkAll'))) {
       dairyService.markAllDelivered(selectedDate, selectedShift);
       loadData();
     }
@@ -126,7 +123,7 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
           <div>
             <div className="flex items-center space-x-2">
               <span className="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-500/30 text-emerald-100 border border-emerald-400/30">
-                {selectedShift === 'MORNING' ? `🌅 ${t('morning')}` : `🌇 ${t('evening')}`} Shift
+                {selectedShift === 'MORNING' ? `🌅 ${t('morning')}` : `🌇 ${t('evening')}`} {t('shift')}
               </span>
               <span className="text-emerald-200 text-xs font-semibold">
                 {selectedDate}
@@ -151,7 +148,7 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
               <span className="text-lg sm:text-2xl font-black text-amber-200">{totalLitresPending.toFixed(1)} <span className="text-xs font-normal">L</span></span>
             </div>
             <div className="text-center px-2 py-1">
-              <span className="block text-[11px] text-slate-300 font-medium">முழு தேவை</span>
+              <span className="block text-[11px] text-slate-300 font-medium">{t('totalDemand')}</span>
               <span className="text-lg sm:text-2xl font-black text-emerald-100">{totalShiftDemand.toFixed(1)} <span className="text-xs font-normal">L</span></span>
             </div>
           </div>
@@ -189,7 +186,7 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
               filter === 'ALL' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            அனைத்தும் ({totalHouses})
+            {t('all')} ({totalHouses})
           </button>
           <button
             onClick={() => setFilter('PENDING')}
@@ -205,7 +202,7 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
               filter === 'DONE' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            முடிந்தது ({completedHouses + skippedHouses})
+            {t('completed')} ({completedHouses + skippedHouses})
           </button>
         </div>
 
@@ -216,7 +213,7 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
             className="flex items-center justify-center space-x-1.5 px-3.5 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-200 transition active:scale-95"
           >
             <CheckCheck className="w-4 h-4" />
-            <span>அனைத்தும் போட்டாச்சு</span>
+            <span>{t('markAllDone')}</span>
           </button>
         )}
       </div>
@@ -247,13 +244,13 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
                     <span className="w-9 h-9 rounded-xl bg-slate-900 text-white font-black text-sm flex items-center justify-center shadow-sm">
                       #{item.customer.routeOrder || idx + 1}
                     </span>
-                    <span className="text-[10px] font-bold text-slate-400 mt-1 uppercase">ரூட்</span>
+                    <span className="text-[10px] font-bold text-slate-400 mt-1 uppercase">{t('route')}</span>
                   </div>
 
                   <div>
                     <div className="flex items-center space-x-2">
                       <span className="px-2 py-0.5 rounded-lg text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-200">
-                        Door: {item.customer.houseNo}
+                        {t('door')}: {item.customer.houseNo}
                       </span>
                       <h3 className="font-extrabold text-base text-slate-900">
                         {item.customer.name}
@@ -288,7 +285,7 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
                       <span className="text-xl sm:text-2xl font-black text-slate-900">
                         {isDelivered ? item.litres : item.defaultQty}
                       </span>
-                      <span className="text-xs font-bold text-slate-500">லிட்டர்</span>
+                      <span className="text-xs font-bold text-slate-500">{t('litres')}</span>
                     </div>
 
                     {isDelivered && item.deliveredTime && (
@@ -325,7 +322,7 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
                         <button
                           onClick={() => setActiveModalCust(item)}
                           className="p-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 font-extrabold text-xs border border-amber-200 transition"
-                          title="Add Extra Milk"
+                          title={t('addExtraMilk')}
                         >
                           <PlusCircle className="w-4 h-4 text-amber-700" />
                         </button>
@@ -334,7 +331,7 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
                         <button
                           onClick={() => handleMarkSkipped(item)}
                           className="p-2.5 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 font-bold text-xs transition"
-                          title="Customer Skipped / On Leave"
+                          title={t('markSkipped')}
                         >
                           <XCircle className="w-4 h-4" />
                         </button>
@@ -346,7 +343,7 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
                             ? 'bg-emerald-600 text-white shadow-sm'
                             : 'bg-slate-300 text-slate-700'
                         }`}>
-                          {isDelivered ? '✓ போட்டாச்சு' : '⏸️ லீவு'}
+                          {isDelivered ? t('markedDone') : t('markedSkipped')}
                         </span>
                         
                         {/* Revert / Edit button */}
@@ -372,7 +369,7 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
           <div className="text-center py-12 bg-white rounded-3xl border border-slate-200 p-6">
             <span className="text-4xl">🎉</span>
             <h4 className="font-extrabold text-slate-800 text-lg mt-2">{t('allDone')}</h4>
-            <p className="text-xs text-slate-500 mt-1">அனைத்து வீடுகளுக்கும் விநியோகம் செய்யப்பட்டுவிட்டது.</p>
+            <p className="text-xs text-slate-500 mt-1">{t('allDeliveredSubtitle')}</p>
           </div>
         )}
       </div>
@@ -383,7 +380,7 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
           <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 space-y-4">
             <div className="flex items-center justify-between border-b pb-3">
               <h3 className="font-black text-slate-900 text-base">
-                கூடுதல் பால் சேர்க்க (Extra Milk)
+                {t('addExtraMilkTitle')}
               </h3>
               <button 
                 onClick={() => setActiveModalCust(null)}
@@ -394,12 +391,12 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
             </div>
 
             <p className="text-xs text-slate-600 font-medium">
-              வாடிக்கையாளர்: <strong className="text-slate-900">{activeModalCust.customer.name}</strong> (Door: {activeModalCust.customer.houseNo})
+              {t('customerLabel')} <strong className="text-slate-900">{activeModalCust.customer.name}</strong> ({t('door')}: {activeModalCust.customer.houseNo})
             </p>
 
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-700 block">
-                எவ்வளவு கூடுதல் பால் வேண்டும்? (Litres)
+                {t('howMuchExtra')}
               </label>
               <div className="grid grid-cols-4 gap-2">
                 {[0.5, 1.0, 1.5, 2.0].map(amt => (
@@ -420,7 +417,7 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
             </div>
 
             <div className="bg-emerald-50 rounded-2xl p-3 border border-emerald-200 text-xs text-emerald-900">
-              மொத்த பால்: <strong>{(activeModalCust.defaultQty || 0) + customExtraQty} Litres</strong>
+              {t('totalMilk')} <strong>{(activeModalCust.defaultQty || 0) + customExtraQty} {t('litres')}</strong>
             </div>
 
             <div className="flex items-center space-x-2 pt-2">
@@ -429,7 +426,7 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
                 onClick={() => setActiveModalCust(null)}
                 className="w-1/2 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-100"
               >
-                ரத்து செய்க
+                {t('cancel')}
               </button>
               <button
                 type="button"
@@ -439,7 +436,7 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
                 }}
                 className="w-1/2 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-200"
               >
-                உறுதி செய்க ✅
+                {t('confirmBtn')}
               </button>
             </div>
           </div>

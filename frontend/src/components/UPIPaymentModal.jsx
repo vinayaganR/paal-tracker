@@ -1,15 +1,14 @@
 import React, { useState } from 'react';
+import { useLanguage } from '../contexts/LanguageContext';
 import { 
   QrCode, 
-  CheckCircle2, 
   Smartphone, 
-  ExternalLink, 
   Copy, 
-  X,
-  CreditCard
+  X
 } from 'lucide-react';
 
 export default function UPIPaymentModal({ customer, amount, monthStr, dairyInfo, onClose, onPaymentSuccess }) {
+  const { t } = useLanguage();
   const [copied, setCopied] = useState(false);
 
   const cleanUpi = dairyInfo?.upiId || 'dairyfarm@okaxis';
@@ -43,7 +42,7 @@ export default function UPIPaymentModal({ customer, amount, monthStr, dairyInfo,
             <QrCode className="w-6 h-6" />
           </div>
           <h3 className="text-lg font-black text-slate-900">
-            UPI QR மூலம் கட்டணம் செலுத்த
+            {t('scanUpiPay')}
           </h3>
           <p className="text-xs text-slate-500 font-medium">
             {customer?.name} ({customer?.houseNo})
@@ -52,12 +51,12 @@ export default function UPIPaymentModal({ customer, amount, monthStr, dairyInfo,
 
         {/* Big Amount Badge */}
         <div className="bg-slate-50 rounded-2xl p-3 border border-slate-200">
-          <span className="text-[11px] font-bold text-slate-400 block uppercase">செலுத்த வேண்டிய தொகை</span>
+          <span className="text-[11px] font-bold text-slate-400 block uppercase">{t('billAmount')}</span>
           <span className="text-3xl font-black text-emerald-700 block">
             ₹{amount}
           </span>
           <span className="text-[11px] text-slate-500 font-medium">
-            மாதம்: {monthStr}
+            {t('billMonth')}: {monthStr}
           </span>
         </div>
 
@@ -83,7 +82,7 @@ export default function UPIPaymentModal({ customer, amount, monthStr, dairyInfo,
             className="flex items-center space-x-1 text-emerald-700 font-bold hover:text-emerald-800 ml-2 flex-shrink-0"
           >
             <Copy className="w-3.5 h-3.5" />
-            <span>{copied ? 'Copied!' : 'Copy'}</span>
+            <span>{copied ? t('copied') : t('copy')}</span>
           </button>
         </div>
 
@@ -93,7 +92,7 @@ export default function UPIPaymentModal({ customer, amount, monthStr, dairyInfo,
           className="flex items-center justify-center space-x-2 w-full py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white font-extrabold text-xs shadow-md shadow-emerald-200 transition"
         >
           <Smartphone className="w-4 h-4" />
-          <span>மொபைல் UPI ஆப்பில் திறக்க (Pay Now)</span>
+          <span>{t('payNowMobile')}</span>
         </a>
 
         {/* Mark as paid button */}
@@ -102,7 +101,7 @@ export default function UPIPaymentModal({ customer, amount, monthStr, dairyInfo,
             onClick={onPaymentSuccess}
             className="w-full py-2.5 rounded-xl border border-emerald-300 text-emerald-800 font-bold text-xs hover:bg-emerald-50 transition"
           >
-            ✓ பணம் பெற்றது என குறிக்க (Mark Paid)
+            {t('markPaidSuccess')}
           </button>
         )}
 

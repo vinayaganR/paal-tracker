@@ -9,10 +9,8 @@ import {
   Phone, 
   Pencil, 
   Trash2, 
-  ArrowUpDown, 
   Save, 
-  X,
-  Droplets
+  X
 } from 'lucide-react';
 
 export default function CustomerDirectory() {
@@ -71,7 +69,7 @@ export default function CustomerDirectory() {
   };
 
   const handleDelete = (id) => {
-    if (window.confirm(lang === 'ta' ? 'இந்த வாடிக்கையாளரை நீக்க உறுதிப்படுத்துகிறீர்களா?' : 'Are you sure you want to remove this customer?')) {
+    if (window.confirm(t('confirmDeleteCustomer'))) {
       dairyService.deleteCustomer(id);
       loadCustomers();
     }
@@ -125,9 +123,9 @@ export default function CustomerDirectory() {
             </h2>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            காலை மொத்த தேவை: <strong className="text-slate-800">{totalMorningDemand.toFixed(1)}L</strong> | 
-            மாலை மொத்த தேவை: <strong className="text-slate-800">{totalEveningDemand.toFixed(1)}L</strong> | 
-            ஒரு நாள்: <strong className="text-emerald-700">{(totalMorningDemand + totalEveningDemand).toFixed(1)} Litres</strong>
+            {t('morning')}: <strong className="text-slate-800">{totalMorningDemand.toFixed(1)}L</strong> | 
+            {t('evening')}: <strong className="text-slate-800">{totalEveningDemand.toFixed(1)}L</strong> | 
+            {t('dailyTotalLitres')} <strong className="text-emerald-700">{(totalMorningDemand + totalEveningDemand).toFixed(1)} {t('litres')}</strong>
           </p>
         </div>
 
@@ -171,7 +169,7 @@ export default function CustomerDirectory() {
                       {cust.name}
                     </h3>
                     <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                      Door: {cust.houseNo}
+                      {t('door')}: {cust.houseNo}
                     </span>
                   </div>
                 </div>
@@ -181,14 +179,14 @@ export default function CustomerDirectory() {
                   <button
                     onClick={() => handleEdit(cust)}
                     className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-700 hover:bg-slate-100 transition"
-                    title="Edit Customer"
+                    title={t('editCustomer')}
                   >
                     <Pencil className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => handleDelete(cust.id)}
                     className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
-                    title="Delete Customer"
+                    title={t('confirmDeleteCustomer')}
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -221,11 +219,11 @@ export default function CustomerDirectory() {
             <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
               <div className="flex items-center space-x-3">
                 <div className="bg-slate-100 px-2.5 py-1 rounded-lg">
-                  <span className="text-[10px] text-slate-500 block font-bold">காலை</span>
+                  <span className="text-[10px] text-slate-500 block font-bold">{t('morning')}</span>
                   <span className="font-extrabold text-slate-900">{cust.defaultMorningQty} L</span>
                 </div>
                 <div className="bg-slate-100 px-2.5 py-1 rounded-lg">
-                  <span className="text-[10px] text-slate-500 block font-bold">மாலை</span>
+                  <span className="text-[10px] text-slate-500 block font-bold">{t('evening')}</span>
                   <span className="font-extrabold text-slate-900">{cust.defaultEveningQty} L</span>
                 </div>
               </div>
@@ -246,7 +244,7 @@ export default function CustomerDirectory() {
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 space-y-4 my-8">
             <div className="flex items-center justify-between border-b pb-3">
               <h3 className="font-extrabold text-slate-900 text-lg">
-                {editingCustomer ? 'வாடிக்கையாளர் திருத்தம் (Edit Customer)' : t('addCustomer')}
+                {editingCustomer ? t('editCustomer') : t('addCustomer')}
               </h3>
               <button 
                 onClick={() => setIsEditing(false)}
@@ -260,28 +258,28 @@ export default function CustomerDirectory() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-bold text-slate-700 block mb-1">
-                    வாடிக்கையாளர் பெயர் *
+                    {t('customerLabel')} *
                   </label>
                   <input
                     type="text"
                     required
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="எ.கா. முத்துசாமி"
+                    placeholder="e.g. Muthusamy"
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
 
                 <div>
                   <label className="text-xs font-bold text-slate-700 block mb-1">
-                    கதவு எண் (House No) *
+                    {t('houseNo')} *
                   </label>
                   <input
                     type="text"
                     required
                     value={formData.houseNo}
                     onChange={(e) => setFormData({ ...formData, houseNo: e.target.value })}
-                    placeholder="எ.கா. 14/A"
+                    placeholder="e.g. 14/A"
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
@@ -290,20 +288,20 @@ export default function CustomerDirectory() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-bold text-slate-700 block mb-1">
-                    தெரு / பகுதி (Street)
+                    {t('street')}
                   </label>
                   <input
                     type="text"
                     value={formData.street}
                     onChange={(e) => setFormData({ ...formData, street: e.target.value })}
-                    placeholder="எ.கா. பாரதியார் வீதி"
+                    placeholder="e.g. Bharathiyar St"
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
 
                 <div>
                   <label className="text-xs font-bold text-slate-700 block mb-1">
-                    தொலைபேசி எண் (Phone)
+                    {t('phone')}
                   </label>
                   <input
                     type="tel"
@@ -319,7 +317,7 @@ export default function CustomerDirectory() {
               <div className="grid grid-cols-3 gap-2 bg-slate-50 p-3 rounded-2xl border border-slate-200/80">
                 <div>
                   <label className="text-[11px] font-bold text-slate-700 block mb-1">
-                    காலை (Litres)
+                    {t('morning')} ({t('litres')})
                   </label>
                   <input
                     type="number"
@@ -332,7 +330,7 @@ export default function CustomerDirectory() {
 
                 <div>
                   <label className="text-[11px] font-bold text-slate-700 block mb-1">
-                    மாலை (Litres)
+                    {t('evening')} ({t('litres')})
                   </label>
                   <input
                     type="number"
@@ -345,7 +343,7 @@ export default function CustomerDirectory() {
 
                 <div>
                   <label className="text-[11px] font-bold text-slate-700 block mb-1">
-                    லிட்டர் விலை (₹)
+                    {t('ratePerLitre')} (₹)
                   </label>
                   <input
                     type="number"
@@ -359,7 +357,7 @@ export default function CustomerDirectory() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-bold text-slate-700 block mb-1">
-                    ரூட் வரிசை எண் (Route Order #)
+                    {t('routeOrder')}
                   </label>
                   <input
                     type="number"
@@ -371,13 +369,13 @@ export default function CustomerDirectory() {
 
                 <div>
                   <label className="text-xs font-bold text-slate-700 block mb-1">
-                    விநியோக குறிப்பு (Notes)
+                    {t('deliveryNotes')}
                   </label>
                   <input
                     type="text"
                     value={formData.notes}
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    placeholder="எ.கா. கேட்டில் பாத்திரம் இருக்கும்"
+                    placeholder="e.g. Leave can at gate"
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold"
                   />
                 </div>
@@ -389,7 +387,7 @@ export default function CustomerDirectory() {
                   onClick={() => setIsEditing(false)}
                   className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-100"
                 >
-                  ரத்து செய்க
+                  {t('cancel')}
                 </button>
                 <button
                   type="submit"

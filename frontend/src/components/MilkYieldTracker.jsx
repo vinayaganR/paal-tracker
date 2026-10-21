@@ -6,10 +6,7 @@ import {
   Droplet, 
   Award, 
   Save, 
-  Scale, 
-  Calendar,
-  Sparkles,
-  Info
+  Scale
 } from 'lucide-react';
 
 export default function MilkYieldTracker({ selectedDate }) {
@@ -21,7 +18,7 @@ export default function MilkYieldTracker({ selectedDate }) {
     eveningYield: 22.0,
     fatPercentage: 4.5,
     snfPercentage: 8.8,
-    notes: 'அனைத்து மாடுகளும் ஆரோக்கியமாக உள்ளன (All cows healthy)',
+    notes: lang === 'ta' ? 'அனைத்து மாடுகளும் நலமாக உள்ளன' : 'All cows healthy & grazing well',
   });
   const [savedSuccess, setSavedSuccess] = useState(false);
 
@@ -73,15 +70,15 @@ export default function MilkYieldTracker({ selectedDate }) {
               <span>{t('milkingStock')}</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-black mt-1">
-              மாட்டுப்பண்ணை கரவை & இருப்பு கணக்கு
+              {t('milkingYieldTitle')}
             </h2>
             <p className="text-xs text-emerald-100 mt-0.5">
-              கரந்த மொத்த பாலும் - வாடிக்கையாளர்களுக்கு போட்ட பாலும் சரியா இருக்கா என சரிபார்க்கும் தளம்.
+              {t('milkingYieldSubtitle')}
             </p>
           </div>
 
           <div className="bg-emerald-950/40 px-4 py-2.5 rounded-2xl border border-emerald-600/30 text-left sm:text-right">
-            <span className="text-[11px] text-emerald-300 block font-medium">நாள்</span>
+            <span className="text-[11px] text-emerald-300 block font-medium">{t('date')}</span>
             <span className="text-base font-extrabold text-white">{selectedDate}</span>
           </div>
         </div>
@@ -89,27 +86,27 @@ export default function MilkYieldTracker({ selectedDate }) {
         {/* Real-time Tally Grid */}
         <div className="grid grid-cols-3 gap-3 pt-5 mt-4 border-t border-emerald-700/60 text-center">
           <div className="bg-emerald-900/40 p-3 rounded-2xl border border-emerald-600/30">
-            <span className="text-[11px] text-emerald-200 block font-medium">மொத்த கரவை (Yield)</span>
+            <span className="text-[11px] text-emerald-200 block font-medium">{t('totalYield')}</span>
             <span className="text-xl sm:text-2xl font-black text-white mt-1 block">
               {totalYield.toFixed(1)} <span className="text-xs font-normal">L</span>
             </span>
           </div>
 
           <div className="bg-emerald-900/40 p-3 rounded-2xl border border-emerald-600/30">
-            <span className="text-[11px] text-emerald-200 block font-medium">விநியோகம் செய்தது</span>
+            <span className="text-[11px] text-emerald-200 block font-medium">{t('distributed')}</span>
             <span className="text-xl sm:text-2xl font-black text-amber-300 mt-1 block">
               {totalDeliveredToday.toFixed(1)} <span className="text-xs font-normal">L</span>
             </span>
           </div>
 
           <div className="bg-emerald-950/60 p-3 rounded-2xl border border-emerald-500/50">
-            <span className="text-[11px] text-emerald-300 block font-bold">மீதமுள்ள இருப்பு</span>
+            <span className="text-[11px] text-emerald-300 block font-bold">{t('remainingStock')}</span>
             <span className={`text-xl sm:text-2xl font-black mt-1 block ${
               remainingMilk < 0 ? 'text-rose-400' : 'text-emerald-300'
             }`}>
               {remainingMilk.toFixed(1)} <span className="text-xs font-normal">L</span>
             </span>
-            <span className="text-[10px] text-slate-300">தயிர் / நெய் / வீட்டுக்கு</span>
+            <span className="text-[10px] text-slate-300">{t('curdGheeNote')}</span>
           </div>
         </div>
       </div>
@@ -120,11 +117,11 @@ export default function MilkYieldTracker({ selectedDate }) {
           <div className="flex items-center justify-between border-b pb-3">
             <h3 className="font-extrabold text-slate-900 text-base flex items-center">
               <Scale className="w-5 h-5 text-emerald-600 mr-2" />
-              இன்றைய கரவை விவரங்களை உள்ளிடுக
+              {t('enterTodayYield')}
             </h3>
             {savedSuccess && (
               <span className="text-xs font-extrabold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
-                ✓ சேமிக்கப்பட்டது!
+                ✓ {t('saveBtn')}
               </span>
             )}
           </div>
@@ -132,7 +129,7 @@ export default function MilkYieldTracker({ selectedDate }) {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="text-xs font-bold text-slate-700 block mb-1">
-                கறந்த மாடுகள் எண்ணிக்கை
+                {t('milkedCowsCount')}
               </label>
               <input
                 type="number"
@@ -144,7 +141,7 @@ export default function MilkYieldTracker({ selectedDate }) {
 
             <div>
               <label className="text-xs font-bold text-slate-700 block mb-1">
-                🌅 காலை கரவை பால் (Litres)
+                {t('morningYieldInput')}
               </label>
               <input
                 type="number"
@@ -157,7 +154,7 @@ export default function MilkYieldTracker({ selectedDate }) {
 
             <div>
               <label className="text-xs font-bold text-slate-700 block mb-1">
-                🌇 மாலை கரவை பால் (Litres)
+                {t('eveningYieldInput')}
               </label>
               <input
                 type="number"
@@ -174,7 +171,7 @@ export default function MilkYieldTracker({ selectedDate }) {
             <div>
               <label className="text-xs font-bold text-emerald-950 block mb-1 flex items-center">
                 <Droplet className="w-4 h-4 mr-1 text-emerald-600" />
-                பால் கொழுப்பு சத்து (FAT %)
+                {t('fatPercentage')}
               </label>
               <input
                 type="number"
@@ -183,13 +180,13 @@ export default function MilkYieldTracker({ selectedDate }) {
                 onChange={(e) => setRecord({ ...record, fatPercentage: e.target.value })}
                 className="w-full bg-white border border-emerald-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-800"
               />
-              <span className="text-[10px] text-slate-500 mt-1 block">பசும்பாலுக்கு இயல்பான அளவு 4.2% - 4.8%</span>
+              <span className="text-[10px] text-slate-500 mt-1 block">{t('fatNote')}</span>
             </div>
 
             <div>
               <label className="text-xs font-bold text-emerald-950 block mb-1 flex items-center">
                 <Award className="w-4 h-4 mr-1 text-emerald-600" />
-                திடச்சத்து (SNF %)
+                {t('snfPercentage')}
               </label>
               <input
                 type="number"
@@ -198,13 +195,13 @@ export default function MilkYieldTracker({ selectedDate }) {
                 onChange={(e) => setRecord({ ...record, snfPercentage: e.target.value })}
                 className="w-full bg-white border border-emerald-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-800"
               />
-              <span className="text-[10px] text-slate-500 mt-1 block">தரமான பசும்பால் SNF 8.5% அல்லது அதற்கு மேல்</span>
+              <span className="text-[10px] text-slate-500 mt-1 block">{t('snfNote')}</span>
             </div>
           </div>
 
           <div>
             <label className="text-xs font-bold text-slate-700 block mb-1">
-              பண்ணை குறிப்பு / தீவன விவரம் (Notes)
+              {t('feedNotes')}
             </label>
             <input
               type="text"
@@ -220,7 +217,7 @@ export default function MilkYieldTracker({ selectedDate }) {
               className="flex items-center space-x-2 px-6 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md shadow-emerald-200 transition"
             >
               <Save className="w-4 h-4" />
-              <span>கரவை கணக்கை சேமிக்க</span>
+              <span>{t('saveYieldBtn')}</span>
             </button>
           </div>
         </form>

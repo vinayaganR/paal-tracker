@@ -4,26 +4,20 @@ import { useAuth } from '../contexts/AuthContext';
 import { dairyService } from '../services/dairyService';
 import { 
   Calendar as CalendarIcon, 
-  CheckCircle2, 
-  XCircle, 
+  PauseCircle, 
   PlusCircle, 
   QrCode, 
-  Clock, 
   MapPin, 
-  PauseCircle, 
-  Sparkles,
-  ChevronDown,
-  AlertCircle
+  Sparkles
 } from 'lucide-react';
 import UPIPaymentModal from './UPIPaymentModal';
 
 export default function CustomerPortal() {
   const { t, lang } = useLanguage();
-  const { activeCustomerId, setActiveCustomerId, dairyInfo } = useAuth();
+  const { activeCustomer, dairyInfo } = useAuth();
   
   const currentMonthStr = new Date().toISOString().substring(0, 7);
   const [selectedMonth, setSelectedMonth] = useState(currentMonthStr);
-  const [customers, setCustomers] = useState([]);
   const [ledgerItem, setLedgerItem] = useState(null);
   const [showVacationModal, setShowVacationModal] = useState(false);
   const [showExtraModal, setShowExtraModal] = useState(false);
@@ -33,13 +27,13 @@ export default function CustomerPortal() {
   const tomorrowStr = new Date(Date.now() + 86400000).toISOString().split('T')[0];
   const [vacationFrom, setVacationFrom] = useState(tomorrowStr);
   const [vacationTo, setVacationTo] = useState(tomorrowStr);
-  const [vacationReason, setVacationReason] = useState('வெளியூர் செல்கிறோம் (Out of town)');
+  const [vacationReason, setVacationReason] = useState(lang === 'ta' ? 'வெளியூர் செல்கிறோம்' : 'Out of town');
 
   // Extra milk form state
   const [extraDate, setExtraDate] = useState(tomorrowStr);
   const [extraShift, setExtraShift] = useState('MORNING');
   const [extraLitres, setExtraLitres] = useState(1.0);
-  const [extraReason, setExtraReason] = useState('விருந்தினர் வருகை (Guests visiting)');
+  const [extraReason, setExtraReason] = useState(lang === 'ta' ? 'விருந்தினர் வருகை' : 'Guests visiting');
 
   const [toastMessage, setToastMessage] = useState('');
 
@@ -49,24 +43,20 @@ export default function CustomerPortal() {
   };
 
   const loadData = () => {
-    const custList = dairyService.getCustomers();
-    setCustomers(custList);
-
+    if (!activeCustomer) return;
     const monthLedger = dairyService.getMonthLedger(selectedMonth);
-    const active = monthLedger.find(item => item.customer.id === activeCustomerId);
+    const active = monthLedger.find(item => item.customer.id === activeCustomer.id);
     setLedgerItem(active || null);
   };
 
   useEffect(() => {
     loadData();
-  }, [activeCustomerId, selectedMonth]);
-
-  const activeCustomer = customers.find(c => c.id === activeCustomerId);
+  }, [activeCustomer, selectedMonth]);
 
   // Handle vacation submit
   const handleVacationSubmit = (e) => {
     e.preventDefault();
-    dairyService.addVacation(activeCustomerId, vacationFrom, vacationTo, vacationReason);
+    dairyService.addVacation(activeCustomer.id, vacationFrom, vacationTo, vacationReason);
     setShowVacationModal(false);
     showToast(t('vacationSuccess'));
     loadData();
@@ -75,7 +65,7 @@ export default function CustomerPortal() {
   // Handle extra milk submit
   const handleExtraSubmit = (e) => {
     e.preventDefault();
-    dairyService.requestExtraMilk(activeCustomerId, extraDate, extraShift, extraLitres, extraReason);
+    dairyService.requestExtraMilk(activeCustomer.id, extraDate, extraShift, extraLitres, extraReason);
     setShowExtraModal(false);
     showToast(t('extraSuccess'));
     loadData();
@@ -84,7 +74,7 @@ export default function CustomerPortal() {
   if (!activeCustomer) {
     return (
       <div className="text-center py-12 bg-white rounded-3xl p-6">
-        <p className="text-slate-500 font-bold">வாடிக்கையாளர் தேர்ந்தெடுக்கப்படவில்லை</p>
+        <p className="text-slate-500 font-bold">{t('customerNotFound')}</p>
       </div>
     );
   }
@@ -92,7 +82,7 @@ export default function CustomerPortal() {
   // Today's delivery status for this customer
   const todayStr = new Date().toISOString().split('T')[0];
   const todayMorningSheet = dairyService.getDailyDeliverySheet(todayStr, 'MORNING');
-  const todayRecord = todayMorningSheet.find(r => r.customer.id === activeCustomerId);
+  const todayRecord = todayMorningSheet.find(r => r.customer.id === activeCustomer.id);
 
   return (
     <div className="space-y-6">
@@ -105,47 +95,26 @@ export default function CustomerPortal() {
         </div>
       )}
 
-      {/* Switcher for testing different customers */}
-      <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
-        <span className="text-xs font-bold text-slate-500">
-          வாடிக்கையாளர் கணக்கு:
-        </span>
-        <div className="relative">
-          <select
-            value={activeCustomerId}
-            onChange={(e) => setActiveCustomerId(e.target.value)}
-            className="text-xs font-extrabold text-slate-900 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200 outline-none pr-7 cursor-pointer"
-          >
-            {customers.map(c => (
-              <option key={c.id} value={c.id}>
-                {c.name} ({c.houseNo})
-              </option>
-            ))}
-          </select>
-          <ChevronDown className="w-3.5 h-3.5 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500" />
-        </div>
-      </div>
-
       {/* Customer Hero Banner */}
-      <div className="bg-gradient-to-br from-emerald-800 to-green-700 rounded-3xl p-5 sm:p-6 text-white shadow-xl relative overflow-hidden">
+      <div className="bg-gradient-to-br from-blue-800 to-indigo-800 rounded-3xl p-5 sm:p-6 text-white shadow-xl relative overflow-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-white/20 text-emerald-100 border border-white/20">
-              Door: {activeCustomer.houseNo}
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-white/20 text-blue-100 border border-white/20">
+              {t('door')}: {activeCustomer.houseNo}
             </span>
             <h2 className="text-2xl sm:text-3xl font-black mt-1">
-              வணக்கம், {activeCustomer.name}!
+              {t('hello')} {activeCustomer.name}!
             </h2>
-            <p className="text-xs text-emerald-100 mt-0.5 flex items-center">
+            <p className="text-xs text-blue-100 mt-0.5 flex items-center">
               <MapPin className="w-3.5 h-3.5 mr-1" />
               {activeCustomer.street}
             </p>
           </div>
 
           {/* Quick Pay Button */}
-          <div className="text-left sm:text-right bg-emerald-950/40 p-3.5 rounded-2xl border border-emerald-500/30">
-            <span className="text-[11px] text-emerald-300 font-medium block">
-              இந்த மாத கட்டணம் (Bill)
+          <div className="text-left sm:text-right bg-blue-950/40 p-3.5 rounded-2xl border border-blue-400/30">
+            <span className="text-[11px] text-blue-200 font-medium block">
+              {t('currentMonthBill')}
             </span>
             <span className="text-2xl sm:text-3xl font-black text-white block mt-0.5">
               ₹{ledgerItem ? ledgerItem.balanceDue : 0}
@@ -174,16 +143,16 @@ export default function CustomerPortal() {
             </div>
             <div>
               <span className="text-xs font-black block">
-                இன்றைய காலை பால்: {todayRecord?.status === 'DELIVERED' ? 'போட்டாச்சு (Delivered)' : todayRecord?.status === 'SKIPPED' ? 'விடுப்பு (Skipped)' : 'விநியோகம் விரைவில்'}
+                {t('todayMorningMilk')} {todayRecord?.status === 'DELIVERED' ? t('markedDone') : todayRecord?.status === 'SKIPPED' ? t('markedSkipped') : t('deliverySoon')}
               </span>
-              <span className="text-[11px] text-emerald-200">
-                அளவு: {todayRecord?.litres || activeCustomer.defaultMorningQty}L {todayRecord?.deliveredTime ? `• நேரம்: ${todayRecord.deliveredTime}` : ''}
+              <span className="text-[11px] text-blue-200">
+                {t('quantityLabel')} {todayRecord?.litres || activeCustomer.defaultMorningQty} {t('litres')} {todayRecord?.deliveredTime ? `• ${t('timeLabel')} ${todayRecord.deliveredTime}` : ''}
               </span>
             </div>
           </div>
 
           <span className="text-xs font-bold bg-white/20 px-2.5 py-1 rounded-lg">
-            இன்று
+            {t('today')}
           </span>
         </div>
       </div>
@@ -192,23 +161,23 @@ export default function CustomerPortal() {
       <div className="grid grid-cols-2 gap-3">
         <button
           onClick={() => setShowVacationModal(true)}
-          className="flex items-center justify-center space-x-2 p-3.5 rounded-2xl bg-white border border-slate-200 shadow-sm hover:border-emerald-500 hover:shadow-md transition text-slate-800"
+          className="flex items-center justify-center space-x-2 p-3.5 rounded-2xl bg-white border border-slate-200 shadow-sm hover:border-blue-500 hover:shadow-md transition text-slate-800"
         >
           <PauseCircle className="w-5 h-5 text-amber-600" />
           <div className="text-left">
             <span className="text-xs font-extrabold block">{t('pauseDelivery')}</span>
-            <span className="text-[10px] text-slate-500">பால் நிறுத்த லீவு பதிவு</span>
+            <span className="text-[10px] text-slate-500">{t('pauseMilkDesc')}</span>
           </div>
         </button>
 
         <button
           onClick={() => setShowExtraModal(true)}
-          className="flex items-center justify-center space-x-2 p-3.5 rounded-2xl bg-white border border-slate-200 shadow-sm hover:border-emerald-500 hover:shadow-md transition text-slate-800"
+          className="flex items-center justify-center space-x-2 p-3.5 rounded-2xl bg-white border border-slate-200 shadow-sm hover:border-blue-500 hover:shadow-md transition text-slate-800"
         >
-          <PlusCircle className="w-5 h-5 text-emerald-600" />
+          <PlusCircle className="w-5 h-5 text-blue-600" />
           <div className="text-left">
             <span className="text-xs font-extrabold block">{t('requestExtra')}</span>
-            <span className="text-[10px] text-slate-500">+1L அல்லது +0.5L கேட்க</span>
+            <span className="text-[10px] text-slate-500">{t('extraMilkDesc')}</span>
           </div>
         </button>
       </div>
@@ -217,9 +186,9 @@ export default function CustomerPortal() {
       <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-sm space-y-4">
         <div className="flex items-center justify-between border-b pb-3">
           <div className="flex items-center space-x-2">
-            <CalendarIcon className="w-5 h-5 text-emerald-600" />
+            <CalendarIcon className="w-5 h-5 text-blue-600" />
             <h3 className="font-extrabold text-slate-900 text-base">
-              மாதாந்திர பாஸ்புக் (Delivery Passbook)
+              {t('monthlyPassbook')}
             </h3>
           </div>
 
@@ -234,16 +203,16 @@ export default function CustomerPortal() {
         {/* Monthly Summary Pills */}
         <div className="grid grid-cols-3 gap-2 text-center">
           <div className="bg-slate-50 p-2.5 rounded-2xl border border-slate-200/80">
-            <span className="text-[10px] text-slate-500 font-bold block">மொத்த பால்</span>
+            <span className="text-[10px] text-slate-500 font-bold block">{t('totalMilkVolume')}</span>
             <span className="text-base font-black text-slate-900">{ledgerItem?.totalLitres || 0} L</span>
           </div>
           <div className="bg-slate-50 p-2.5 rounded-2xl border border-slate-200/80">
-            <span className="text-[10px] text-slate-500 font-bold block">வாங்கின நாட்கள்</span>
-            <span className="text-base font-black text-emerald-700">{ledgerItem?.deliveredDays || 0} நாட்கள்</span>
+            <span className="text-[10px] text-slate-500 font-bold block">{t('deliveredDaysCount')}</span>
+            <span className="text-base font-black text-emerald-700">{ledgerItem?.deliveredDays || 0} {t('days')}</span>
           </div>
           <div className="bg-slate-50 p-2.5 rounded-2xl border border-slate-200/80">
-            <span className="text-[10px] text-slate-500 font-bold block">விடுப்பு</span>
-            <span className="text-base font-black text-slate-500">{ledgerItem?.skippedDays || 0} நாட்கள்</span>
+            <span className="text-[10px] text-slate-500 font-bold block">{t('leaveDaysCount')}</span>
+            <span className="text-base font-black text-slate-500">{ledgerItem?.skippedDays || 0} {t('days')}</span>
           </div>
         </div>
 
@@ -276,7 +245,7 @@ export default function CustomerPortal() {
                   )}
                   {isSkipped && (
                     <span className="text-[9px] font-bold block text-slate-500">
-                      லீவு
+                      {t('skipped')}
                     </span>
                   )}
                   {!isDelivered && !isSkipped && (
@@ -290,10 +259,10 @@ export default function CustomerPortal() {
 
         <div className="flex items-center justify-between text-[11px] text-slate-500 pt-2 border-t">
           <div className="flex items-center space-x-3">
-            <span className="flex items-center"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500 mr-1"></span> போட்ட பால்</span>
-            <span className="flex items-center"><span className="w-2.5 h-2.5 rounded-full bg-slate-300 mr-1"></span> லீவு நாள்</span>
+            <span className="flex items-center"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500 mr-1"></span> {t('deliveredMilkLegend')}</span>
+            <span className="flex items-center"><span className="w-2.5 h-2.5 rounded-full bg-slate-300 mr-1"></span> {t('leaveDayLegend')}</span>
           </div>
-          <span className="font-semibold">லிட்டர் ₹{activeCustomer.ratePerLitre || 56}</span>
+          <span className="font-semibold">{t('ratePerLitre')} ₹{activeCustomer.ratePerLitre || 56}</span>
         </div>
       </div>
 
@@ -311,13 +280,13 @@ export default function CustomerPortal() {
             </div>
 
             <p className="text-xs text-slate-600">
-              நீங்கள் லீவு பதிவு செய்தால் அந்த நாட்களில் பால் விநியோகம் நிறுத்தப்பட்டு, மாதாந்திர பில்லில் கட்டணம் சேர்க்கப்படாது.
+              {t('leaveExplain')}
             </p>
 
             <form onSubmit={handleVacationSubmit} className="space-y-3">
               <div>
                 <label className="text-xs font-bold text-slate-700 block mb-1">
-                  தொடக்க நாள் (From Date)
+                  {t('fromDate')}
                 </label>
                 <input
                   type="date"
@@ -330,7 +299,7 @@ export default function CustomerPortal() {
 
               <div>
                 <label className="text-xs font-bold text-slate-700 block mb-1">
-                  முடிவு நாள் (To Date)
+                  {t('toDate')}
                 </label>
                 <input
                   type="date"
@@ -343,7 +312,7 @@ export default function CustomerPortal() {
 
               <div>
                 <label className="text-xs font-bold text-slate-700 block mb-1">
-                  காரணம் (Reason)
+                  {t('reason')}
                 </label>
                 <input
                   type="text"
@@ -359,13 +328,13 @@ export default function CustomerPortal() {
                   onClick={() => setShowVacationModal(false)}
                   className="w-1/2 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600"
                 >
-                  ரத்து செய்க
+                  {t('cancel')}
                 </button>
                 <button
                   type="submit"
                   className="w-1/2 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-900 text-xs font-black shadow"
                 >
-                  லீவு பதிவு செய் ✅
+                  {t('submitLeaveBtn')}
                 </button>
               </div>
             </form>
@@ -389,7 +358,7 @@ export default function CustomerPortal() {
             <form onSubmit={handleExtraSubmit} className="space-y-3">
               <div>
                 <label className="text-xs font-bold text-slate-700 block mb-1">
-                  தேதி (Date)
+                  {t('date')}
                 </label>
                 <input
                   type="date"
@@ -402,7 +371,7 @@ export default function CustomerPortal() {
 
               <div>
                 <label className="text-xs font-bold text-slate-700 block mb-1">
-                  ஷிப்ட்
+                  {t('shift')}
                 </label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
@@ -412,7 +381,7 @@ export default function CustomerPortal() {
                       extraShift === 'MORNING' ? 'bg-amber-400 text-slate-900 border-amber-500' : 'bg-slate-50 border-slate-200'
                     }`}
                   >
-                    காலை (Morning)
+                    {t('morning')}
                   </button>
                   <button
                     type="button"
@@ -421,14 +390,14 @@ export default function CustomerPortal() {
                       extraShift === 'EVENING' ? 'bg-indigo-600 text-white border-indigo-700' : 'bg-slate-50 border-slate-200'
                     }`}
                   >
-                    மாலை (Evening)
+                    {t('evening')}
                   </button>
                 </div>
               </div>
 
               <div>
                 <label className="text-xs font-bold text-slate-700 block mb-1">
-                  கூடுதல் அளவு (Litres)
+                  {t('quantityLabel')} ({t('litres')})
                 </label>
                 <div className="grid grid-cols-3 gap-2">
                   {[0.5, 1.0, 2.0].map(amt => (
@@ -437,7 +406,7 @@ export default function CustomerPortal() {
                       type="button"
                       onClick={() => setExtraLitres(amt)}
                       className={`py-2 rounded-xl text-xs font-black border ${
-                        extraLitres === amt ? 'bg-emerald-600 text-white border-emerald-700' : 'bg-slate-50 border-slate-200'
+                        extraLitres === amt ? 'bg-blue-600 text-white border-blue-700' : 'bg-slate-50 border-slate-200'
                       }`}
                     >
                       +{amt} L
@@ -452,13 +421,13 @@ export default function CustomerPortal() {
                   onClick={() => setShowExtraModal(false)}
                   className="w-1/2 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600"
                 >
-                  ரத்து செய்க
+                  {t('cancel')}
                 </button>
                 <button
                   type="submit"
-                  className="w-1/2 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow"
+                  className="w-1/2 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow"
                 >
-                  கோரிக்கை அனுப்பு ✅
+                  {t('sendRequestBtn')}
                 </button>
               </div>
             </form>
