@@ -120,6 +120,7 @@ export default function CustomerPortal() {
               ₹{ledgerItem ? ledgerItem.balanceDue : 0}
             </span>
             <button
+              id="tour-customer-upi"
               onClick={() => setShowQrModal(true)}
               className="mt-2 inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-900 text-xs font-black shadow transition active:scale-95"
             >
@@ -130,7 +131,10 @@ export default function CustomerPortal() {
         </div>
 
         {/* Today's Delivery Status Card */}
-        <div className="mt-5 bg-white/10 rounded-2xl p-3.5 backdrop-blur-md border border-white/15 flex items-center justify-between">
+        <div 
+          id="tour-customer-status"
+          className="mt-5 bg-white/10 rounded-2xl p-3.5 backdrop-blur-md border border-white/15 flex items-center justify-between"
+        >
           <div className="flex items-center space-x-2.5">
             <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-lg ${
               todayRecord?.status === 'DELIVERED'
@@ -160,6 +164,7 @@ export default function CustomerPortal() {
       {/* Customer Quick Actions: Pause / Extra Milk */}
       <div className="grid grid-cols-2 gap-3">
         <button
+          id="tour-customer-pause"
           onClick={() => setShowVacationModal(true)}
           className="flex items-center justify-center space-x-2 p-3.5 rounded-2xl bg-white border border-slate-200 shadow-sm hover:border-blue-500 hover:shadow-md transition text-slate-800"
         >
@@ -171,6 +176,7 @@ export default function CustomerPortal() {
         </button>
 
         <button
+          id="tour-customer-extra"
           onClick={() => setShowExtraModal(true)}
           className="flex items-center justify-center space-x-2 p-3.5 rounded-2xl bg-white border border-slate-200 shadow-sm hover:border-blue-500 hover:shadow-md transition text-slate-800"
         >
@@ -183,7 +189,10 @@ export default function CustomerPortal() {
       </div>
 
       {/* Monthly Passbook / Calendar */}
-      <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-sm space-y-4">
+      <div 
+        id="tour-customer-passbook"
+        className="bg-white rounded-3xl border border-slate-200 p-5 shadow-sm space-y-4"
+      >
         <div className="flex items-center justify-between border-b pb-3">
           <div className="flex items-center space-x-2">
             <CalendarIcon className="w-5 h-5 text-blue-600" />

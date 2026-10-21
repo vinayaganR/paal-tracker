@@ -114,7 +114,10 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
     <div className="space-y-5">
       
       {/* 5:00 AM Dashboard Metrics Banner */}
-      <div className="bg-gradient-to-r from-emerald-800 via-emerald-700 to-green-700 rounded-3xl p-4 sm:p-6 text-white shadow-lg relative overflow-hidden">
+      <div 
+        id="tour-metrics-banner"
+        className="bg-gradient-to-r from-emerald-800 via-emerald-700 to-green-700 rounded-3xl p-4 sm:p-6 text-white shadow-lg relative overflow-hidden"
+      >
         <div className="absolute right-0 top-0 translate-x-4 -translate-y-4 opacity-10 pointer-events-none">
           <span className="text-9xl font-black">🥛</span>
         </div>
@@ -311,6 +314,7 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
                       <>
                         {/* 1-Tap Delivered Button */}
                         <button
+                          id={idx === 0 ? "tour-mark-delivered" : undefined}
                           onClick={() => handleMarkDelivered(item, 0)}
                           className="flex items-center space-x-1 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md shadow-emerald-200 transition active:scale-95"
                         >
@@ -320,6 +324,7 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
 
                         {/* Extra Milk Button */}
                         <button
+                          id={idx === 0 ? "tour-extra-milk" : undefined}
                           onClick={() => setActiveModalCust(item)}
                           className="p-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 font-extrabold text-xs border border-amber-200 transition"
                           title={t('addExtraMilk')}
@@ -329,6 +334,7 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
 
                         {/* Skip / Leave Button */}
                         <button
+                          id={idx === 0 ? "tour-skip-leave" : undefined}
                           onClick={() => handleMarkSkipped(item)}
                           className="p-2.5 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 font-bold text-xs transition"
                           title={t('markSkipped')}

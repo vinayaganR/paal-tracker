@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LoginPage from './components/LoginPage';
@@ -8,6 +8,7 @@ import CustomerDirectory from './components/CustomerDirectory';
 import BillingLedger from './components/BillingLedger';
 import CustomerPortal from './components/CustomerPortal';
 import MilkYieldTracker from './components/MilkYieldTracker';
+import InteractiveTour from './components/InteractiveTour';
 import { 
   Bike, 
   Users, 
@@ -33,12 +34,106 @@ function MainApp() {
   const [activeTab, setActiveTab] = useState('runner'); // 'runner' | 'customers' | 'billing' | 'milking'
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [settingsForm, setSettingsForm] = useState(dairyInfo);
+  const [isTourOpen, setIsTourOpen] = useState(false);
+
+  // Auto-launch interactive tour for first-time visitors
+  useEffect(() => {
+    if (isAdmin) {
+      const seen = localStorage.getItem('paal_vandi_owner_tour_seen');
+      if (!seen) {
+        const timer = setTimeout(() => setIsTourOpen(true), 600);
+        return () => clearTimeout(timer);
+      }
+    } else if (isCustomer) {
+      const seen = localStorage.getItem('paal_vandi_cust_tour_seen');
+      if (!seen) {
+        const timer = setTimeout(() => setIsTourOpen(true), 600);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [isAdmin, isCustomer]);
+
+  const handleTourComplete = () => {
+    if (isAdmin) {
+      localStorage.setItem('paal_vandi_owner_tour_seen', 'true');
+    } else if (isCustomer) {
+      localStorage.setItem('paal_vandi_cust_tour_seen', 'true');
+    }
+  };
 
   const handleSaveSettings = (e) => {
     e.preventDefault();
     updateDairyInfo(settingsForm);
     setShowSettingsModal(false);
   };
+
+  // Define Village-Friendly Tour Steps for Dairy Owner (Appa)
+  const ownerTourSteps = [
+    {
+      targetId: 'tour-shift-selector',
+      title: t('tourShiftTitle'),
+      content: t('tourShiftDesc'),
+    },
+    {
+      targetId: 'tour-metrics-banner',
+      title: t('tourMetricsTitle'),
+      content: t('tourMetricsDesc'),
+    },
+    {
+      targetId: 'tour-mark-delivered',
+      title: t('tourMarkDoneTitle'),
+      content: t('tourMarkDoneDesc'),
+    },
+    {
+      targetId: 'tour-extra-milk',
+      title: t('tourExtraMilkTitle'),
+      content: t('tourExtraMilkDesc'),
+    },
+    {
+      targetId: 'tour-skip-leave',
+      title: t('tourSkipLeaveTitle'),
+      content: t('tourSkipLeaveDesc'),
+    },
+    {
+      targetId: 'tour-tab-billing',
+      title: t('tourBillingTitle'),
+      content: t('tourBillingDesc'),
+    },
+    {
+      targetId: 'tour-tab-milking',
+      title: t('tourMilkingTitle'),
+      content: t('tourMilkingDesc'),
+    },
+  ];
+
+  // Define Village-Friendly Tour Steps for Household Customer
+  const customerTourSteps = [
+    {
+      targetId: 'tour-customer-status',
+      title: t('tourCustStatusTitle'),
+      content: t('tourCustStatusDesc'),
+    },
+    {
+      targetId: 'tour-customer-pause',
+      title: t('tourCustPauseTitle'),
+      content: t('tourCustPauseDesc'),
+    },
+    {
+      targetId: 'tour-customer-extra',
+      title: t('tourCustExtraTitle'),
+      content: t('tourCustExtraDesc'),
+    },
+    {
+      targetId: 'tour-customer-passbook',
+      title: t('tourCustPassbookTitle'),
+      content: t('tourCustPassbookDesc'),
+    },
+    {
+      targetId: 'tour-customer-upi',
+      title: t('tourCustPayTitle'),
+      content: t('tourCustPayDesc'),
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-between">
@@ -53,6 +148,7 @@ function MainApp() {
             setSettingsForm(dairyInfo);
             setShowSettingsModal(true);
           }}
+          onOpenTour={() => setIsTourOpen(true)}
         />
 
         {/* -------------------- 👨‍🌾 DAIRY OWNER / APPA VIEW -------------------- */}
@@ -87,6 +183,7 @@ function MainApp() {
                   </button>
 
                   <button
+                    id="tour-tab-billing"
                     onClick={() => setActiveTab('billing')}
                     className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-extrabold transition whitespace-nowrap ${
                       activeTab === 'billing'
@@ -99,6 +196,7 @@ function MainApp() {
                   </button>
 
                   <button
+                    id="tour-tab-milking"
                     onClick={() => setActiveTab('milking')}
                     className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-extrabold transition whitespace-nowrap ${
                       activeTab === 'milking'
@@ -195,6 +293,15 @@ function MainApp() {
           {t('pureCowMilk')} • {t('appSubtitle')}
         </p>
       </footer>
+
+      {/* Interactive Walkthrough Tour for New Users (Village-Friendly) */}
+      <InteractiveTour
+        isOpen={isTourOpen}
+        onClose={() => setIsTourOpen(false)}
+        onComplete={handleTourComplete}
+        steps={isAdmin ? ownerTourSteps : customerTourSteps}
+        tourKey={isAdmin ? 'owner' : 'customer'}
+      />
 
       {/* Dairy Settings Modal (For Appa) */}
       {showSettingsModal && (

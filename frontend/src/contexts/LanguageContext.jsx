@@ -167,6 +167,46 @@ const translations = {
     rupees: "₹",
     close: "மூடுக",
     confirm: "உறுதி செய்",
+
+    // Interactive Onboarding Tour (Village-Friendly Walkthrough)
+    tourHelpBtn: "வழிகாட்டி (Tour)",
+    tourNext: "அடுத்து →",
+    tourPrev: "← முந்தையது",
+    tourSkip: "தவிர் (Skip)",
+    tourFinish: "புரிந்தது! (Finish)",
+    tourStepOf: "படிநிலை",
+
+    // Owner Tour steps
+    tourOwnerWelcomeTitle: "அப்பாவுக்கு வணக்கம்! 👨‍🌾",
+    tourOwnerWelcomeDesc: "பால்வண்டி ஆப்பை எப்படி சுலபமாக பயன்படுத்துவது என 1 நிமிடத்தில் பார்த்துவிடலாம்.",
+    tourShiftTitle: "1. காலை / மாலை ஷிப்ட்",
+    tourShiftDesc: "காலையில் பால் போடும்போது 'காலை'யையும், மாலையில் 'மாலை'யையும் தொட்டு மாற்றிக்கொள்ளலாம்.",
+    tourMetricsTitle: "2. இன்றைய பால் நிலவரம்",
+    tourMetricsDesc: "இன்று மொத்தம் எத்தனை லிட்டர் பால் போடணும், எவ்வளவு போட்டாச்சு, மீதம் எவ்வளவு போடணும் என நொடியில் பார்க்கலாம்.",
+    tourMarkDoneTitle: "3. போட்டாச்சு பட்டன் ✅",
+    tourMarkDoneDesc: "வீட்டு வாசலில் பால் ஊற்றியதும் இந்த பச்சை பட்டனை ஒரு தட்டு தட்டினால் போதும்! நேரம் உடனே பதிவாகிவிடும்.",
+    tourExtraMilkTitle: "4. கூடுதல் பால் சேர்க்க (+)",
+    tourExtraMilkDesc: "வாடிக்கையாளர் திடீரென எக்ஸ்ட்ரா பால் கேட்டால், இந்த பட்டனை தொட்டு +0.5L அல்லது +1L சேர்க்கலாம்.",
+    tourSkipLeaveTitle: "5. லீவு பட்டன் (⏸️)",
+    tourSkipLeaveDesc: "அவர்கள் ஊருக்கு போயிருந்தால் இந்த பட்டனை தட்டினால் போதும், அன்றைய பில்லில் பணம் சேராது.",
+    tourBillingTitle: "6. வாட்ஸ்அப் பில் & UPI",
+    tourBillingDesc: "மாத கடைசியில் ஒரே கிளிக்கில் வாடிக்கையாளர் வாட்ஸ்அப்பிற்கு தமிழிலேயே ரசீதும், Google Pay QR கோடும் அனுப்பலாம்.",
+    tourMilkingTitle: "7. கரவை இருப்பு கணக்கு",
+    tourMilkingDesc: "மாட்டில் கறந்த மொத்த பாலும், வீடுகளுக்கு போட்ட பாலும் சரியா இருக்கா என நஷ்டம் இல்லாமல் சரிபார்க்கலாம்.",
+
+    // Customer Tour steps
+    tourCustWelcomeTitle: "வணக்கம் வாடிக்கையாளரே! 🏡",
+    tourCustWelcomeDesc: "உங்கள் வீட்டு பால் கணக்கை மொபைலிலேயே சுலபமாக பார்க்க ஒரு சின்ன வழிகாட்டி.",
+    tourCustStatusTitle: "1. இன்றைய பால் நிலை",
+    tourCustStatusDesc: "இன்று காலை எத்தனை மணிக்கு பால் போடப்பட்டது என்ற துல்லியமான நேரம் இங்கே தெரியும்.",
+    tourCustPauseTitle: "2. லீவு பதிவு (பால் நிறுத்த)",
+    tourCustPauseDesc: "ஊருக்கு போறீங்களா? இந்த பட்டனை தொட்டு தேதி போட்டால் பால் நிறுத்தப்படும், பில்லில் பணம் வராது!",
+    tourCustExtraTitle: "3. கூடுதல் பால் கேட்க",
+    tourCustExtraDesc: "வீட்டுக்கு சொந்தக்காரங்க வந்தா நாளைக்கு +1L எக்ஸ்ட்ரா பால் வேண்டும் என முன்கூட்டியே கேட்கலாம்.",
+    tourCustPassbookTitle: "4. மாதாந்திர பாஸ்புக்",
+    tourCustPassbookDesc: "இந்த மாசம் எத்தனை நாள் வாங்கினோம், எத்தனை நாள் லீவு போட்டோம் என்பதை கேலெண்டரில் வெளிப்படையாக பார்க்கலாம்.",
+    tourCustPayTitle: "5. UPI மூலம் கட்டணம் செலுத்த",
+    tourCustPayDesc: "இந்த பட்டனை தொட்டால் QR கோட் வரும். Google Pay, PhonePe மூலம் 1 நொடியில் பில் செலுத்தலாம்.",
   },
   en: {
     // App branding
@@ -334,6 +374,46 @@ const translations = {
     rupees: "₹",
     close: "Close",
     confirm: "Confirm",
+
+    // Interactive Onboarding Tour (Village-Friendly Walkthrough)
+    tourHelpBtn: "Guide Tour",
+    tourNext: "Next →",
+    tourPrev: "← Back",
+    tourSkip: "Skip",
+    tourFinish: "Got it! (Finish)",
+    tourStepOf: "Step",
+
+    // Owner Tour steps
+    tourOwnerWelcomeTitle: "Welcome Dairy Owner! 👨‍🌾",
+    tourOwnerWelcomeDesc: "Here is a 1-minute visual guide to run your daily milk business effortlessly.",
+    tourShiftTitle: "1. Morning / Evening Shift",
+    tourShiftDesc: "Switch between Morning and Evening shifts here with one tap.",
+    tourMetricsTitle: "2. Today's Delivery Tally",
+    tourMetricsDesc: "See total litres to deliver, litres completed, and pending amount at a glance.",
+    tourMarkDoneTitle: "3. Mark Delivered Button ✅",
+    tourMarkDoneDesc: "Tap this green button when milk is poured at the gate! Delivered time is instantly recorded.",
+    tourExtraMilkTitle: "4. Add Extra Milk (+)",
+    tourExtraMilkDesc: "Tap here if a customer suddenly asks for +0.5L or +1L extra milk on the spot.",
+    tourSkipLeaveTitle: "5. Leave / Skip Button (⏸️)",
+    tourSkipLeaveDesc: "If the house is locked or they are on leave, tap here to skip without charging them.",
+    tourBillingTitle: "6. WhatsApp Invoicing & UPI",
+    tourBillingDesc: "Send itemized WhatsApp bills with instant Google Pay QR codes at month end.",
+    tourMilkingTitle: "7. Milking Stock Reconciliation",
+    tourMilkingDesc: "Reconcile daily milking yield against delivered volume to prevent milk loss.",
+
+    // Customer Tour steps
+    tourCustWelcomeTitle: "Welcome Valued Customer! 🏡",
+    tourCustWelcomeDesc: "A quick guide to track your daily fresh milk delivery and pay online.",
+    tourCustStatusTitle: "1. Today's Delivery Status",
+    tourCustStatusDesc: "Live status shows exact time your morning fresh milk was delivered.",
+    tourCustPauseTitle: "2. Pause Delivery (Leave)",
+    tourCustPauseDesc: "Going out of town? Tap here to pause milk for those days so you won't be charged!",
+    tourCustExtraTitle: "3. Request Extra Milk",
+    tourCustExtraDesc: "Expecting guests? Request an extra +0.5L or +1L for tomorrow in one tap.",
+    tourCustPassbookTitle: "4. Monthly Passbook",
+    tourCustPassbookDesc: "Transparent monthly calendar showing exactly which days milk was received.",
+    tourCustPayTitle: "5. Pay via UPI (GPay / PhonePe)",
+    tourCustPayDesc: "Instant QR code to pay your monthly bill seamlessly via Google Pay or PhonePe.",
   }
 };
 

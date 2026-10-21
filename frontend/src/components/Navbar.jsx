@@ -7,7 +7,7 @@ import {
   Languages, 
   LogOut, 
   Settings,
-  Sparkles
+  HelpCircle
 } from 'lucide-react';
 
 export default function Navbar({ 
@@ -15,7 +15,8 @@ export default function Navbar({
   setSelectedDate, 
   selectedShift, 
   setSelectedShift, 
-  onOpenSettings 
+  onOpenSettings,
+  onOpenTour
 }) {
   const { t, lang, toggleLanguage } = useLanguage();
   const { currentUser, isAdmin, isCustomer, activeCustomer, logout, dairyInfo } = useAuth();
@@ -47,7 +48,10 @@ export default function Navbar({
 
           {/* Center: Shift & Date Selector (ONLY for Admin / Appa) */}
           {isAdmin && (
-            <div className="flex items-center bg-slate-100/80 p-1 rounded-xl border border-slate-200/60 shadow-inner">
+            <div 
+              id="tour-shift-selector"
+              className="flex items-center bg-slate-100/80 p-1 rounded-xl border border-slate-200/60 shadow-inner"
+            >
               <button
                 onClick={() => setSelectedShift('MORNING')}
                 className={`flex items-center space-x-1 px-2.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all ${
@@ -83,9 +87,22 @@ export default function Navbar({
             </div>
           )}
 
-          {/* Right Controls: User Badge, Language Toggle & Logout */}
-          <div className="flex items-center space-x-2 sm:space-x-3">
+          {/* Right Controls: Tour Help, Language, User Badge & Logout */}
+          <div className="flex items-center space-x-2 sm:space-x-2.5">
             
+            {/* Visual Guide Tour Trigger Button */}
+            {onOpenTour && (
+              <button
+                id="tour-help-btn"
+                onClick={onOpenTour}
+                className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 text-xs font-extrabold transition shadow-sm"
+                title={t('tourHelpBtn')}
+              >
+                <span className="text-sm">💡</span>
+                <span className="hidden md:inline">{t('tourHelpBtn')}</span>
+              </button>
+            )}
+
             {/* Language Switch Button */}
             <button
               onClick={toggleLanguage}
