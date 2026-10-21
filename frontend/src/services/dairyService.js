@@ -1,0 +1,404 @@
+// Dairy Business Data Service (Firestore + Local Persistence)
+import { db, isRealFirebase } from '../config/firebase';
+import { collection, doc, setDoc, getDocs, updateDoc, query, where } from 'firebase/firestore';
+
+const INITIAL_CUSTOMERS = [
+  {
+    id: 'cust_1',
+    name: 'முத்துசாமி (Muthusamy)',
+    houseNo: '14/A',
+    street: 'பாரதியார் வீதி (Bharathiyar St)',
+    phone: '9840112345',
+    defaultMorningQty: 1.0,
+    defaultEveningQty: 0.5,
+    ratePerLitre: 56,
+    routeOrder: 1,
+    notes: 'கேட்டில் உள்ள பாத்திரத்தில் ஊற்றவும் (Leave in gate can)',
+    status: 'ACTIVE'
+  },
+  {
+    id: 'cust_2',
+    name: 'சுந்தரம் ஆசிரியர் (Sundaram Teacher)',
+    houseNo: '28',
+    street: 'பாரதியார் வீதி (Bharathiyar St)',
+    phone: '9789223456',
+    defaultMorningQty: 1.5,
+    defaultEveningQty: 0.0,
+    ratePerLitre: 56,
+    routeOrder: 2,
+    notes: 'மணி அடிக்கவும் (Ring bell)',
+    status: 'ACTIVE'
+  },
+  {
+    id: 'cust_3',
+    name: 'விஜயலட்சுமி அம்மாள் (Vijayalakshmi)',
+    houseNo: '5',
+    street: 'அம்மன் கோவில் தெரு (Amman Kovil St)',
+    phone: '9443334567',
+    defaultMorningQty: 0.5,
+    defaultEveningQty: 0.5,
+    ratePerLitre: 56,
+    routeOrder: 3,
+    notes: 'பூனை வராதபடி மூடி வைக்கவும்',
+    status: 'ACTIVE'
+  },
+  {
+    id: 'cust_4',
+    name: 'சரவணன் மெடிக்கல்ஸ் (Saravanan)',
+    houseNo: '42',
+    street: 'மெயின் ரோடு (Main Road)',
+    phone: '9944445678',
+    defaultMorningQty: 2.0,
+    defaultEveningQty: 1.0,
+    ratePerLitre: 54, // Discounted bulk rate
+    routeOrder: 4,
+    notes: 'கடை வாசலில் வைக்கவும்',
+    status: 'ACTIVE'
+  },
+  {
+    id: 'cust_5',
+    name: 'கார்த்திக் இன்ஜினியர் (Karthik)',
+    houseNo: '108',
+    street: 'நேரு நகர் (Nehru Nagar)',
+    phone: '9841556789',
+    defaultMorningQty: 1.0,
+    defaultEveningQty: 0.0,
+    ratePerLitre: 56,
+    routeOrder: 5,
+    notes: 'கூகுள் பே மூலம் மாதாந்திர கட்டணம் செலுத்துவார்',
+    status: 'ACTIVE'
+  }
+];
+
+export const dairyService = {
+  // Load Customers
+  getCustomers: () => {
+    const local = localStorage.getItem('paal_vandi_customers');
+    if (local) {
+      try {
+        return JSON.parse(local);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    localStorage.setItem('paal_vandi_customers', JSON.stringify(INITIAL_CUSTOMERS));
+    return INITIAL_CUSTOMERS;
+  },
+
+  // Save Customer (Add or Update)
+  saveCustomer: (customer) => {
+    const list = dairyService.getCustomers();
+    const index = list.findIndex(c => c.id === customer.id);
+    let updated;
+    if (index >= 0) {
+      updated = [...list];
+      updated[index] = customer;
+    } else {
+      const newCust = {
+        ...customer,
+        id: customer.id || `cust_${Date.now()}`,
+        routeOrder: customer.routeOrder || list.length + 1,
+        status: 'ACTIVE'
+      };
+      updated = [...list, newCust];
+    }
+    localStorage.setItem('paal_vandi_customers', JSON.stringify(updated));
+    
+    // Firestore async sync
+    if (isRealFirebase && db) {
+      try {
+        const docRef = doc(db, 'customers', customer.id || updated[updated.length - 1].id);
+        setDoc(docRef, customer, { merge: true });
+      } catch (e) {
+        console.warn("Firestore sync error:", e);
+      }
+    }
+    return updated;
+  },
+
+  // Delete Customer
+  deleteCustomer: (id) => {
+    const list = dairyService.getCustomers().filter(c => c.id !== id);
+    localStorage.setItem('paal_vandi_customers', JSON.stringify(list));
+    return list;
+  },
+
+  // Get Today's Delivery Records for given Date and Shift
+  // Date format: YYYY-MM-DD, shift: 'MORNING' | 'EVENING'
+  getDailyDeliverySheet: (dateStr, shift = 'MORNING') => {
+    const key = `paal_vandi_deliveries_${dateStr}_${shift}`;
+    const customers = dairyService.getCustomers().sort((a, b) => (a.routeOrder || 0) - (b.routeOrder || 0));
+    const saved = localStorage.getItem(key);
+    let records = saved ? JSON.parse(saved) : {};
+
+    // Get any active vacation/leave pauses for this customer on this date
+    const vacationList = dairyService.getVacationList();
+
+    // Map each customer to a delivery row
+    return customers.map(cust => {
+      const isPaused = vacationList.some(v => v.customerId === cust.id && v.date === dateStr);
+      const defaultQty = shift === 'MORNING' ? (cust.defaultMorningQty || 0) : (cust.defaultEveningQty || 0);
+      
+      const record = records[cust.id] || {
+        status: isPaused ? 'SKIPPED' : 'PENDING',
+        litres: isPaused ? 0 : defaultQty,
+        extraLitres: 0,
+        deliveredTime: null,
+        note: isPaused ? 'விடுப்பில் உள்ளார் (On Leave)' : ''
+      };
+
+      return {
+        customer: cust,
+        ...record,
+        defaultQty
+      };
+    });
+  },
+
+  // Update Single Delivery Status (Mark Delivered, Skip, Extra)
+  updateDeliveryRecord: (dateStr, shift, customerId, status, litres, extraLitres = 0, note = '') => {
+    const key = `paal_vandi_deliveries_${dateStr}_${shift}`;
+    const saved = localStorage.getItem(key);
+    let records = saved ? JSON.parse(saved) : {};
+
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    records[customerId] = {
+      status, // 'DELIVERED' | 'SKIPPED' | 'PENDING'
+      litres: Number(litres) || 0,
+      extraLitres: Number(extraLitres) || 0,
+      deliveredTime: status === 'DELIVERED' ? timeStr : null,
+      note: note || '',
+      updatedAt: now.toISOString()
+    };
+
+    localStorage.setItem(key, JSON.stringify(records));
+
+    // Also update overall monthly register index
+    dairyService.touchMonthlyRegister(dateStr);
+
+    return records;
+  },
+
+  // Mark all remaining pending as Delivered with 1-tap
+  markAllDelivered: (dateStr, shift) => {
+    const sheet = dairyService.getDailyDeliverySheet(dateStr, shift);
+    sheet.forEach(item => {
+      if (item.status === 'PENDING' && item.defaultQty > 0) {
+        dairyService.updateDeliveryRecord(
+          dateStr,
+          shift,
+          item.customer.id,
+          'DELIVERED',
+          item.defaultQty,
+          0,
+          'தானியங்கி உறுதி (Auto Marked)'
+        );
+      }
+    });
+    return dairyService.getDailyDeliverySheet(dateStr, shift);
+  },
+
+  // Vacation / Leave Management
+  getVacationList: () => {
+    const saved = localStorage.getItem('paal_vandi_vacations');
+    return saved ? JSON.parse(saved) : [];
+  },
+
+  addVacation: (customerId, fromDate, toDate, reason = 'வெளியூர் செல்கிறோம் (Out of town)') => {
+    const list = dairyService.getVacationList();
+    // Expand date range to individual days
+    const days = [];
+    let cur = new Date(fromDate);
+    const end = new Date(toDate);
+
+    while (cur <= end) {
+      const dateStr = cur.toISOString().split('T')[0];
+      days.push({
+        id: `vac_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+        customerId,
+        date: dateStr,
+        reason,
+        createdAt: new Date().toISOString()
+      });
+      cur.setDate(cur.getDate() + 1);
+    }
+
+    const updated = [...list, ...days];
+    localStorage.setItem('paal_vandi_vacations', JSON.stringify(updated));
+    return updated;
+  },
+
+  // Extra Milk Requests from Customers
+  getExtraMilkRequests: () => {
+    const saved = localStorage.getItem('paal_vandi_extra_requests');
+    return saved ? JSON.parse(saved) : [];
+  },
+
+  requestExtraMilk: (customerId, dateStr, shift, extraLitres, reason = 'விருந்தினர் வருகை (Guests arriving)') => {
+    const list = dairyService.getExtraMilkRequests();
+    const newReq = {
+      id: `req_${Date.now()}`,
+      customerId,
+      date: dateStr,
+      shift,
+      extraLitres: Number(extraLitres),
+      reason,
+      status: 'APPROVED',
+      createdAt: new Date().toISOString()
+    };
+    const updated = [...list, newReq];
+    localStorage.setItem('paal_vandi_extra_requests', JSON.stringify(updated));
+
+    // Automatically apply to delivery sheet for that date/shift
+    const currentRecords = dairyService.getDailyDeliverySheet(dateStr, shift);
+    const match = currentRecords.find(r => r.customer.id === customerId);
+    if (match) {
+      dairyService.updateDeliveryRecord(
+        dateStr,
+        shift,
+        customerId,
+        match.status === 'SKIPPED' ? 'DELIVERED' : match.status,
+        (match.defaultQty || 0) + Number(extraLitres),
+        Number(extraLitres),
+        `கூடுதல்: ${extraLitres}L (${reason})`
+      );
+    }
+    return updated;
+  },
+
+  // Monthly Billing Ledger Computation
+  // monthStr format: 'YYYY-MM' (e.g., '2026-10')
+  getMonthLedger: (monthStr) => {
+    const customers = dairyService.getCustomers();
+    const [year, month] = monthStr.split('-').map(Number);
+    const daysInMonth = new Date(year, month, 0).getDate();
+
+    // Payments store: key `paal_vandi_payments_YYYY_MM`
+    const paymentsKey = `paal_vandi_payments_${monthStr}`;
+    const payments = JSON.parse(localStorage.getItem(paymentsKey) || '{}');
+
+    return customers.map(cust => {
+      let totalLitres = 0;
+      let deliveredDays = 0;
+      let skippedDays = 0;
+      const dailyBreakdown = [];
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dayStr = `${monthStr}-${String(day).padStart(2, '0')}`;
+        
+        // Morning
+        const mKey = `paal_vandi_deliveries_${dayStr}_MORNING`;
+        const mSaved = JSON.parse(localStorage.getItem(mKey) || '{}');
+        const mRecord = mSaved[cust.id];
+
+        // Evening
+        const eKey = `paal_vandi_deliveries_${dayStr}_EVENING`;
+        const eSaved = JSON.parse(localStorage.getItem(eKey) || '{}');
+        const eRecord = eSaved[cust.id];
+
+        let dayLitres = 0;
+        let dayStatus = 'NO_SCHEDULE';
+
+        // Check if there was delivery
+        const mQty = (mRecord && mRecord.status === 'DELIVERED') ? Number(mRecord.litres || 0) : 0;
+        const eQty = (eRecord && eRecord.status === 'DELIVERED') ? Number(eRecord.litres || 0) : 0;
+        dayLitres = mQty + eQty;
+
+        const isSkipped = (mRecord && mRecord.status === 'SKIPPED') || (eRecord && eRecord.status === 'SKIPPED');
+
+        if (dayLitres > 0) {
+          dayStatus = 'DELIVERED';
+          deliveredDays++;
+          totalLitres += dayLitres;
+        } else if (isSkipped) {
+          dayStatus = 'SKIPPED';
+          skippedDays++;
+        } else {
+          // If in the future or no delivery logged yet, check defaults
+          const todayStr = new Date().toISOString().split('T')[0];
+          if (dayStr <= todayStr && (cust.defaultMorningQty > 0 || cust.defaultEveningQty > 0)) {
+            // Unmarked past day - treat as delivered for ledger estimate if not skipped
+            const estQty = (cust.defaultMorningQty || 0) + (cust.defaultEveningQty || 0);
+            dayLitres = estQty;
+            totalLitres += dayLitres;
+            deliveredDays++;
+            dayStatus = 'DELIVERED';
+          }
+        }
+
+        dailyBreakdown.push({
+          date: dayStr,
+          day,
+          litres: dayLitres,
+          morningLitres: mQty,
+          eveningLitres: eQty,
+          status: dayStatus,
+        });
+      }
+
+      const rate = cust.ratePerLitre || 56;
+      const totalAmount = Math.round(totalLitres * rate);
+      const paidAmount = Number(payments[cust.id]?.paidAmount || 0);
+      const balanceDue = Math.max(0, totalAmount - paidAmount);
+
+      return {
+        customer: cust,
+        totalLitres: parseFloat(totalLitres.toFixed(1)),
+        deliveredDays,
+        skippedDays,
+        rate,
+        totalAmount,
+        paidAmount,
+        balanceDue,
+        paymentStatus: balanceDue === 0 ? 'PAID' : (paidAmount > 0 ? 'PARTIAL' : 'PENDING'),
+        dailyBreakdown
+      };
+    });
+  },
+
+  // Record a payment
+  recordPayment: (monthStr, customerId, amount, mode = 'UPI') => {
+    const paymentsKey = `paal_vandi_payments_${monthStr}`;
+    const payments = JSON.parse(localStorage.getItem(paymentsKey) || '{}');
+    payments[customerId] = {
+      paidAmount: Number(amount),
+      paidAt: new Date().toISOString(),
+      mode
+    };
+    localStorage.setItem(paymentsKey, JSON.stringify(payments));
+    return payments;
+  },
+
+  // Milking Tally Ledger (Morning / Evening Cow Yield)
+  getMilkingYield: (dateStr) => {
+    const key = `paal_vandi_milking_${dateStr}`;
+    const saved = localStorage.getItem(key);
+    return saved ? JSON.parse(saved) : {
+      date: dateStr,
+      totalCows: 6,
+      morningYield: 34.0,
+      eveningYield: 22.0,
+      fatPercentage: 4.5,
+      snfPercentage: 8.8,
+      notes: 'அனைத்து மாடுகளும் நலமாக உள்ளன (Cows healthy & grass fed)'
+    };
+  },
+
+  saveMilkingYield: (record) => {
+    const key = `paal_vandi_milking_${record.date}`;
+    localStorage.setItem(key, JSON.stringify(record));
+    return record;
+  },
+
+  touchMonthlyRegister: (dateStr) => {
+    // Keeps a quick index of active months
+    const month = dateStr.substring(0, 7);
+    const months = JSON.parse(localStorage.getItem('paal_vandi_months') || '[]');
+    if (!months.includes(month)) {
+      months.push(month);
+      localStorage.setItem('paal_vandi_months', JSON.stringify(months));
+    }
+  }
+};
