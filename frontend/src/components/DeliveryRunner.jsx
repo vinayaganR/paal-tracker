@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { dairyService } from '../services/dairyService';
+import VendorRequestsModal from './VendorRequestsModal';
 import { 
   CheckCircle2, 
   XCircle, 
@@ -9,7 +10,8 @@ import {
   Clock, 
   MapPin, 
   CheckCheck, 
-  RotateCcw
+  RotateCcw,
+  Bell
 } from 'lucide-react';
 
 export default function DeliveryRunner({ selectedDate, selectedShift }) {
@@ -19,15 +21,32 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
   const [search, setSearch] = useState('');
   const [activeModalCust, setActiveModalCust] = useState(null);
   const [customExtraQty, setCustomExtraQty] = useState(0.5);
+  const [extraRequests, setExtraRequests] = useState([]);
+  const [isRequestsModalOpen, setIsRequestsModalOpen] = useState(false);
 
   const loadData = () => {
     const data = dairyService.getDailyDeliverySheet(selectedDate, selectedShift);
     setSheet(data);
   };
 
+  const loadRequests = () => {
+    const all = dairyService.getExtraMilkRequests();
+    setExtraRequests(all);
+  };
+
   useEffect(() => {
     loadData();
+    loadRequests();
+
+    const unsubscribe = dairyService.subscribeToNotifications(() => {
+      loadRequests();
+      loadData();
+    });
+
+    return () => unsubscribe();
   }, [selectedDate, selectedShift]);
+
+  const pendingRequests = extraRequests.filter(r => r.status === 'PENDING');
 
   // Handle Mark Delivered
   const handleMarkDelivered = (item, extraLitres = 0) => {
@@ -113,6 +132,42 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
   return (
     <div className="space-y-5">
       
+      {/* Live Incoming Extra Milk Request Notification Banner for Appa */}
+      {pendingRequests.length > 0 && (
+        <div className="bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-slate-950 p-4 sm:p-5 rounded-3xl shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-2 border-amber-300 ring-4 ring-amber-400/20 animate-in fade-in">
+          <div className="flex items-center space-x-3.5">
+            <div className="w-11 h-11 rounded-2xl bg-slate-950 text-amber-300 flex items-center justify-center text-xl flex-shrink-0 shadow-md">
+              <Bell className="w-5 h-5 animate-bounce" />
+            </div>
+            <div>
+              <div className="flex items-center space-x-2">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-slate-950 text-white tracking-wider">
+                  {t('newExtraNotification')}
+                </span>
+                <span className="text-xs font-bold text-slate-900">
+                  {pendingRequests.length} {t('pendingRequests')}
+                </span>
+              </div>
+              <h3 className="font-extrabold text-base text-slate-950 mt-0.5">
+                {pendingRequests[0].customerName} ({t('door')}: {pendingRequests[0].houseNo}) • <span className="font-black text-emerald-950">+{pendingRequests[0].extraLitres}L {pendingRequests[0].shift === 'MORNING' ? t('morning') : t('evening')}</span>
+              </h3>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-2 flex-shrink-0">
+            <button
+              onClick={() => setIsRequestsModalOpen(true)}
+              className="w-full sm:w-auto px-4 py-2.5 rounded-2xl bg-slate-950 hover:bg-slate-900 active:scale-98 text-white text-xs sm:text-sm font-black shadow-lg transition flex items-center justify-center space-x-1.5"
+            >
+              <span>{t('extraRequestsTitle')}</span>
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-amber-400 text-slate-950 font-black">
+                {pendingRequests.length}
+              </span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 5:00 AM Dashboard Metrics Banner */}
       <div 
         id="tour-metrics-banner"
@@ -448,6 +503,17 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
           </div>
         </div>
       )}
+
+      {/* Vendor Extra Milk Requests Modal */}
+      <VendorRequestsModal
+        isOpen={isRequestsModalOpen}
+        onClose={() => setIsRequestsModalOpen(false)}
+        requests={extraRequests}
+        onActionComplete={() => {
+          loadRequests();
+          loadData();
+        }}
+      />
 
     </div>
   );

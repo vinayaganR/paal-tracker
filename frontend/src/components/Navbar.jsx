@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
+import { dairyService } from '../services/dairyService';
 import BrandLogoModal from './BrandLogoModal';
+import VendorRequestsModal from './VendorRequestsModal';
 import DairyNavbarArt from './DairyNavbarArt';
 import cowImg from '../assets/cow-transparent.png';
 import { 
@@ -13,7 +15,8 @@ import {
   Settings,
   HelpCircle,
   Pencil,
-  Camera
+  Camera,
+  Bell
 } from 'lucide-react';
 
 export default function Navbar({ 
@@ -27,7 +30,21 @@ export default function Navbar({
   const { t, lang, toggleLanguage } = useLanguage();
   const { currentUser, isAdmin, isCustomer, activeCustomer, logout, dairyInfo } = useAuth();
   const [isBrandModalOpen, setIsBrandModalOpen] = useState(false);
+  const [extraRequests, setExtraRequests] = useState([]);
+  const [isRequestsModalOpen, setIsRequestsModalOpen] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isAdmin) {
+      setExtraRequests(dairyService.getExtraMilkRequests());
+      const unsubscribe = dairyService.subscribeToNotifications(() => {
+        setExtraRequests(dairyService.getExtraMilkRequests());
+      });
+      return () => unsubscribe();
+    }
+  }, [isAdmin]);
+
+  const pendingCount = extraRequests.filter(r => r.status === 'PENDING').length;
 
   const handleLogout = () => {
     logout();
@@ -178,9 +195,29 @@ export default function Navbar({
             </div>
           )}
 
-          {/* Right Controls: Tour Help, Language, User Badge & Logout */}
-          <div className="flex items-center space-x-2 sm:space-x-2.5">
+          {/* Right Controls: Extra Milk Bell, Tour Help, Language, User Badge & Logout */}
+          <div className="flex items-center space-x-1.5 sm:space-x-2.5">
             
+            {/* Vendor Extra Milk Notification Bell (For Appa) */}
+            {isAdmin && (
+              <button
+                onClick={() => setIsRequestsModalOpen(true)}
+                className={`relative p-2 rounded-xl transition border flex items-center justify-center ${
+                  pendingCount > 0
+                    ? 'bg-amber-400 hover:bg-amber-500 text-slate-900 border-amber-500 shadow-md animate-bounce'
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-600 border-slate-200'
+                }`}
+                title={pendingCount > 0 ? `${pendingCount} ${t('pendingRequests')}` : t('extraRequestsTitle')}
+              >
+                <Bell className="w-4 h-4" />
+                {pendingCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 px-1.5 py-0.2 rounded-full text-[10px] font-black bg-rose-600 text-white shadow ring-2 ring-white">
+                    {pendingCount}
+                  </span>
+                )}
+              </button>
+            )}
+
             {/* Visual Guide Tour Trigger Button */}
             {onOpenTour && (
               <button
@@ -246,6 +283,16 @@ export default function Navbar({
         <BrandLogoModal 
           isOpen={isBrandModalOpen} 
           onClose={() => setIsBrandModalOpen(false)} 
+        />
+      )}
+
+      {/* Vendor Extra Milk Requests Approval Modal */}
+      {isAdmin && (
+        <VendorRequestsModal
+          isOpen={isRequestsModalOpen}
+          onClose={() => setIsRequestsModalOpen(false)}
+          requests={extraRequests}
+          onActionComplete={() => setExtraRequests(dairyService.getExtraMilkRequests())}
         />
       )}
     </header>

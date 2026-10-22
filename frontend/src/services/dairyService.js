@@ -233,39 +233,164 @@ export const dairyService = {
   // Extra Milk Requests from Customers
   getExtraMilkRequests: () => {
     const saved = localStorage.getItem('paal_vandi_extra_requests');
-    return saved ? JSON.parse(saved) : [];
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    const defaultList = [
+      {
+        id: "req_demo_1",
+        customerId: "cust_1",
+        customerName: "முத்துசாமி (Muthusamy)",
+        houseNo: "14/A",
+        phone: "9840112345",
+        date: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+        shift: "MORNING",
+        extraLitres: 1.0,
+        reason: "விருந்தினர் வருகை (Guests visiting)",
+        status: "PENDING",
+        createdAt: new Date().toISOString()
+      }
+    ];
+    localStorage.setItem('paal_vandi_extra_requests', JSON.stringify(defaultList));
+    return defaultList;
   },
 
-  requestExtraMilk: (customerId, dateStr, shift, extraLitres, reason = 'விருந்தினர் வருகை (Guests arriving)') => {
+  // Customer creates a request with status 'PENDING'
+  requestExtraMilk: async (customerData, dateStr, shift, extraLitres, reason = 'விருந்தினர் வருகை') => {
     const list = dairyService.getExtraMilkRequests();
+    const customerId = typeof customerData === 'string' ? customerData : customerData.id;
+    const customer = typeof customerData === 'object' ? customerData : dairyService.getCustomers().find(c => c.id === customerId);
+
     const newReq = {
       id: `req_${Date.now()}`,
       customerId,
+      customerName: customer?.name || 'Valued Customer',
+      houseNo: customer?.houseNo || '—',
+      phone: customer?.phone || '',
       date: dateStr,
       shift,
       extraLitres: Number(extraLitres),
       reason,
-      status: 'APPROVED',
+      status: 'PENDING',
       createdAt: new Date().toISOString()
     };
-    const updated = [...list, newReq];
+
+    const updated = [newReq, ...list];
     localStorage.setItem('paal_vandi_extra_requests', JSON.stringify(updated));
 
-    // Automatically apply to delivery sheet for that date/shift
-    const currentRecords = dairyService.getDailyDeliverySheet(dateStr, shift);
-    const match = currentRecords.find(r => r.customer.id === customerId);
-    if (match) {
-      dairyService.updateDeliveryRecord(
-        dateStr,
-        shift,
-        customerId,
-        match.status === 'SKIPPED' ? 'DELIVERED' : match.status,
-        (match.defaultQty || 0) + Number(extraLitres),
-        Number(extraLitres),
-        `கூடுதல்: ${extraLitres}L (${reason})`
-      );
+    // Post to server API asynchronously
+    try {
+      fetch('/api/extra-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newReq)
+      }).catch(() => {});
+    } catch (e) { /* offline fallback */ }
+
+    // Broadcast event to notify Vendor tab in real-time
+    dairyService.broadcastEvent('EXTRA_REQUEST_CREATED', newReq);
+
+    return newReq;
+  },
+
+  // Vendor accepts or rejects the customer's extra milk request
+  respondToExtraMilkRequest: async (requestId, status, vendorNote = '') => {
+    const list = dairyService.getExtraMilkRequests();
+    const index = list.findIndex(r => r.id === requestId);
+    if (index === -1) return null;
+
+    const currentReq = list[index];
+    const defaultNote = status === 'ACCEPTED' 
+      ? 'பால் உள்ளது! விநியோகம் செய்யப்படும் (Milk is available! Will be delivered)'
+      : 'மன்னிக்கவும்! கூடுதல் பால் இருப்பு இல்லை (Sorry, extra milk is not available for this shift)';
+
+    const updatedReq = {
+      ...currentReq,
+      status, // 'ACCEPTED' or 'REJECTED'
+      vendorNote: vendorNote || defaultNote,
+      respondedAt: new Date().toISOString()
+    };
+
+    list[index] = updatedReq;
+    localStorage.setItem('paal_vandi_extra_requests', JSON.stringify(list));
+
+    // If ACCEPTED, automatically update the Delivery Runner Sheet!
+    if (status === 'ACCEPTED') {
+      const currentRecords = dairyService.getDailyDeliverySheet(currentReq.date, currentReq.shift);
+      const match = currentRecords.find(r => r.customer.id === currentReq.customerId);
+      if (match) {
+        dairyService.updateDeliveryRecord(
+          currentReq.date,
+          currentReq.shift,
+          currentReq.customerId,
+          match.status === 'SKIPPED' ? 'DELIVERED' : match.status,
+          (match.defaultQty || 0) + Number(currentReq.extraLitres),
+          Number(currentReq.extraLitres),
+          `கூடுதல் பால்: +${currentReq.extraLitres}L (${currentReq.reason})`
+        );
+      }
     }
-    return updated;
+
+    // Push response to server API asynchronously
+    try {
+      fetch('/api/extra-requests', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requestId,
+          status,
+          vendorNote: updatedReq.vendorNote
+        })
+      }).catch(() => {});
+    } catch (e) { /* offline fallback */ }
+
+    // Broadcast event so Customer tab receives immediate confirmation!
+    dairyService.broadcastEvent('EXTRA_REQUEST_RESPONDED', updatedReq);
+
+    return updatedReq;
+  },
+
+  // Real-time broadcast channel helper
+  broadcastEvent: (type, payload) => {
+    try {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('paal_vandi_notification', { detail: { type, payload } }));
+        if ('BroadcastChannel' in window) {
+          const bc = new BroadcastChannel('paal_vandi_channel');
+          bc.postMessage({ type, payload });
+          bc.close();
+        }
+      }
+    } catch (e) {
+      console.warn('Broadcast note:', e);
+    }
+  },
+
+  // Subscriber hook for real-time events
+  subscribeToNotifications: (callback) => {
+    if (typeof window === 'undefined') return () => {};
+
+    const localHandler = (e) => {
+      if (e.detail) callback(e.detail);
+    };
+    window.addEventListener('paal_vandi_notification', localHandler);
+
+    let bc = null;
+    if ('BroadcastChannel' in window) {
+      bc = new BroadcastChannel('paal_vandi_channel');
+      bc.onmessage = (event) => {
+        if (event.data) callback(event.data);
+      };
+    }
+
+    return () => {
+      window.removeEventListener('paal_vandi_notification', localHandler);
+      if (bc) bc.close();
+    };
   },
 
   // Monthly Billing Ledger Computation

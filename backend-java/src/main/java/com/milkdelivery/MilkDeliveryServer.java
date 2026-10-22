@@ -44,6 +44,7 @@ public class MilkDeliveryServer {
         server.createContext("/api/customers", new CustomersHandler());
         server.createContext("/api/route/demand", new RouteDemandHandler());
         server.createContext("/api/billing/demo", new DemoBillingHandler());
+        server.createContext("/api/extra-requests", new ExtraRequestsHandler());
 
         server.setExecutor(null);
         System.out.println("==================================================");
@@ -143,6 +144,35 @@ public class MilkDeliveryServer {
                 cust.id(), cust.name(), bill.totalLitres(), bill.deliveredDays(), bill.totalAmount(), bill.balanceDue(), upiUrl
             );
             sendJsonResponse(exchange, 200, json);
+        }
+    }
+    static class ExtraRequestsHandler implements HttpHandler {
+        private static final java.util.List<String> requests = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+        static {
+            requests.add("{\"id\":\"req_demo_1\",\"customerId\":\"cust_1\",\"customerName\":\"முத்துசாமி (Muthusamy)\",\"houseNo\":\"14/A\",\"phone\":\"9840112345\",\"date\":\"2026-10-23\",\"shift\":\"MORNING\",\"extraLitres\":1.0,\"reason\":\"விருந்தினர் வருகை\",\"status\":\"PENDING\",\"createdAt\":\"2026-10-22T05:00:00Z\"}");
+        }
+
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            String method = exchange.getRequestMethod();
+            if ("OPTIONS".equalsIgnoreCase(method)) {
+                sendJsonResponse(exchange, 200, "{}");
+                return;
+            }
+            if ("GET".equalsIgnoreCase(method)) {
+                String json = "[" + String.join(",", requests) + "]";
+                sendJsonResponse(exchange, 200, json);
+                return;
+            }
+            if ("POST".equalsIgnoreCase(method) || "PUT".equalsIgnoreCase(method)) {
+                byte[] bytes = exchange.getRequestBody().readAllBytes();
+                String body = new String(bytes, StandardCharsets.UTF_8);
+                requests.add(0, body);
+                sendJsonResponse(exchange, 200, "{\"success\":true,\"message\":\"Extra request updated on Java server\"}");
+                return;
+            }
+            sendJsonResponse(exchange, 405, "{\"error\":\"Method not allowed\"}");
         }
     }
 }

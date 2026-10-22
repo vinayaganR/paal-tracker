@@ -8,7 +8,11 @@ import {
   PlusCircle, 
   QrCode, 
   MapPin, 
-  Sparkles
+  Sparkles,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  Bell
 } from 'lucide-react';
 import UPIPaymentModal from './UPIPaymentModal';
 
@@ -19,6 +23,7 @@ export default function CustomerPortal() {
   const currentMonthStr = new Date().toISOString().substring(0, 7);
   const [selectedMonth, setSelectedMonth] = useState(currentMonthStr);
   const [ledgerItem, setLedgerItem] = useState(null);
+  const [extraRequests, setExtraRequests] = useState([]);
   const [showVacationModal, setShowVacationModal] = useState(false);
   const [showExtraModal, setShowExtraModal] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
@@ -39,7 +44,7 @@ export default function CustomerPortal() {
 
   const showToast = (msg) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(''), 3500);
+    setTimeout(() => setToastMessage(''), 4000);
   };
 
   const loadData = () => {
@@ -49,8 +54,32 @@ export default function CustomerPortal() {
     setLedgerItem(active || null);
   };
 
+  const loadRequests = () => {
+    if (!activeCustomer) return;
+    const all = dairyService.getExtraMilkRequests();
+    const myRequests = all.filter(r => r.customerId === activeCustomer.id);
+    setExtraRequests(myRequests);
+  };
+
   useEffect(() => {
     loadData();
+    loadRequests();
+
+    // Subscribe to real-time notifications from vendor (Accept / Reject)
+    const unsubscribe = dairyService.subscribeToNotifications((data) => {
+      if (data.type === 'EXTRA_REQUEST_RESPONDED' && data.payload?.customerId === activeCustomer?.id) {
+        loadRequests();
+        loadData();
+        const req = data.payload;
+        if (req.status === 'ACCEPTED') {
+          showToast(`🎉 ${t('requestAcceptedMsg')}`);
+        } else if (req.status === 'REJECTED') {
+          showToast(`ℹ️ ${t('requestRejectedMsg')}`);
+        }
+      }
+    });
+
+    return () => unsubscribe();
   }, [activeCustomer, selectedMonth]);
 
   // Handle vacation submit
@@ -63,12 +92,18 @@ export default function CustomerPortal() {
   };
 
   // Handle extra milk submit
-  const handleExtraSubmit = (e) => {
+  const handleExtraSubmit = async (e) => {
     e.preventDefault();
-    dairyService.requestExtraMilk(activeCustomer.id, extraDate, extraShift, extraLitres, extraReason);
+    await dairyService.requestExtraMilk(
+      activeCustomer,
+      extraDate,
+      extraShift,
+      extraLitres,
+      extraReason
+    );
     setShowExtraModal(false);
-    showToast(t('extraSuccess'));
-    loadData();
+    showToast(t('requestSentNotice'));
+    loadRequests();
   };
 
   if (!activeCustomer) {
@@ -187,6 +222,102 @@ export default function CustomerPortal() {
           </div>
         </button>
       </div>
+
+      {/* Customer's Extra Milk Request Status Tracker */}
+      {extraRequests.length > 0 && (
+        <div className="bg-white rounded-3xl border border-slate-200 p-4 sm:p-5 shadow-sm space-y-3">
+          <div className="flex items-center justify-between border-b pb-2.5">
+            <div className="flex items-center space-x-2">
+              <span className="text-lg">🥛</span>
+              <h3 className="font-extrabold text-slate-900 text-sm sm:text-base">
+                {t('extraRequestsTitle')}
+              </h3>
+            </div>
+            <span className="text-xs font-bold text-slate-500">
+              {extraRequests.length} {lang === 'ta' ? 'கோரிக்கைகள்' : 'Requests'}
+            </span>
+          </div>
+
+          <div className="space-y-2.5">
+            {extraRequests.slice(0, 4).map((req) => {
+              const isPending = req.status === 'PENDING';
+              const isAccepted = req.status === 'ACCEPTED';
+              const isRejected = req.status === 'REJECTED';
+
+              return (
+                <div
+                  key={req.id}
+                  className={`p-3.5 rounded-2xl border transition-all ${
+                    isPending
+                      ? 'bg-amber-50/70 border-amber-300'
+                      : isAccepted
+                        ? 'bg-emerald-50 border-emerald-200'
+                        : 'bg-rose-50 border-rose-200'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <span className="font-black text-sm text-slate-900">
+                          +{req.extraLitres}L {req.shift === 'MORNING' ? t('morning') : t('evening')}
+                        </span>
+                        <span className="text-xs text-slate-500 font-bold">• {req.date}</span>
+                      </div>
+                      {req.reason && (
+                        <p className="text-xs text-slate-600 mt-0.5">
+                          📌 {req.reason}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Status badge */}
+                    <div className="flex-shrink-0">
+                      {isPending && (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-black bg-amber-400 text-slate-900 animate-pulse shadow-sm">
+                          <Clock className="w-3 h-3 mr-1" />
+                          {t('statusPending')}
+                        </span>
+                      )}
+                      {isAccepted && (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-black bg-emerald-600 text-white shadow-sm">
+                          <CheckCircle2 className="w-3 h-3 mr-1" />
+                          {t('statusAccepted')}
+                        </span>
+                      )}
+                      {isRejected && (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-black bg-rose-600 text-white shadow-sm">
+                          <XCircle className="w-3 h-3 mr-1" />
+                          {t('statusRejected')}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Vendor Note response feedback */}
+                  <div className="mt-2 text-xs pt-2 border-t border-slate-200/60 font-semibold flex items-center space-x-1.5">
+                    {isPending && (
+                      <span className="text-amber-800 flex items-center">
+                        <Clock className="w-3.5 h-3.5 mr-1 text-amber-600 animate-spin" />
+                        {t('pendingApproval')}
+                      </span>
+                    )}
+                    {isAccepted && (
+                      <span className="text-emerald-800">
+                        🎉 {req.vendorNote || t('requestAcceptedMsg')}
+                      </span>
+                    )}
+                    {isRejected && (
+                      <span className="text-rose-700">
+                        ⚠️ {req.vendorNote || t('requestRejectedMsg')}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Monthly Passbook / Calendar */}
       <div 

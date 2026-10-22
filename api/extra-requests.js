@@ -1,0 +1,122 @@
+// Vercel Serverless Function for Extra Milk Requests
+// Handles Customer Requests, Vendor Notifications, and Vendor Accept/Reject Responses
+
+// In-memory request store for fast cloud synchronization
+let inMemoryRequests = [
+  {
+    id: "req_demo_1",
+    customerId: "cust_1",
+    customerName: "முத்துசாமி (Muthusamy)",
+    houseNo: "14/A",
+    phone: "9840112345",
+    date: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+    shift: "MORNING",
+    extraLitres: 1.0,
+    reason: "Guests visiting (விருந்தினர் வருகை)",
+    status: "PENDING",
+    createdAt: new Date().toISOString()
+  }
+];
+
+export default function handler(req, res) {
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Credentials', true);
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+  );
+
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+
+  // GET: Fetch all extra milk requests
+  if (req.method === 'GET') {
+    const { customerId, status } = req.query;
+    let filtered = [...inMemoryRequests];
+    if (customerId) {
+      filtered = filtered.filter(r => r.customerId === customerId);
+    }
+    if (status) {
+      filtered = filtered.filter(r => r.status === status);
+    }
+    return res.status(200).json({
+      success: true,
+      count: filtered.length,
+      data: filtered
+    });
+  }
+
+  // POST: Customer submits a new Extra Milk request (status = PENDING)
+  if (req.method === 'POST') {
+    try {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+      const { customerId, customerName, houseNo, phone, date, shift, extraLitres, reason } = body;
+
+      if (!customerId || !date || !extraLitres) {
+        return res.status(400).json({ success: false, message: 'Missing required request fields' });
+      }
+
+      const newRequest = {
+        id: `req_${Date.now()}`,
+        customerId,
+        customerName: customerName || 'Valued Customer',
+        houseNo: houseNo || '—',
+        phone: phone || '',
+        date,
+        shift: shift || 'MORNING',
+        extraLitres: Number(extraLitres),
+        reason: reason || 'Special requirement',
+        status: 'PENDING',
+        createdAt: new Date().toISOString()
+      };
+
+      inMemoryRequests.unshift(newRequest);
+
+      return res.status(201).json({
+        success: true,
+        message: 'Extra milk request submitted. Waiting for vendor approval.',
+        data: newRequest
+      });
+    } catch (e) {
+      return res.status(500).json({ success: false, error: e.message });
+    }
+  }
+
+  // PUT / PATCH: Vendor accepts or rejects the request
+  if (req.method === 'PUT' || req.method === 'PATCH') {
+    try {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+      const { requestId, status, vendorNote } = body;
+
+      if (!requestId || !status) {
+        return res.status(400).json({ success: false, message: 'Missing requestId or status' });
+      }
+
+      const index = inMemoryRequests.findIndex(r => r.id === requestId);
+      if (index === -1) {
+        return res.status(404).json({ success: false, message: 'Request not found' });
+      }
+
+      inMemoryRequests[index] = {
+        ...inMemoryRequests[index],
+        status, // 'ACCEPTED' or 'REJECTED'
+        vendorNote: vendorNote || (status === 'ACCEPTED' ? 'Milk is available, will deliver!' : 'Sorry, extra milk is not available for this shift.'),
+        respondedAt: new Date().toISOString()
+      };
+
+      return res.status(200).json({
+        success: true,
+        message: `Request ${status.toLowerCase()} by farm vendor.`,
+        data: inMemoryRequests[index]
+      });
+    } catch (e) {
+      return res.status(500).json({ success: false, error: e.message });
+    }
+  }
+
+  return res.status(405).json({ message: 'Method Not Allowed' });
+}
