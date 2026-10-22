@@ -31,20 +31,28 @@ export default function Navbar({
   const { currentUser, isAdmin, isCustomer, activeCustomer, logout, dairyInfo } = useAuth();
   const [isBrandModalOpen, setIsBrandModalOpen] = useState(false);
   const [extraRequests, setExtraRequests] = useState([]);
+  const [leaveRequests, setLeaveRequests] = useState([]);
   const [isRequestsModalOpen, setIsRequestsModalOpen] = useState(false);
   const navigate = useNavigate();
 
+  const loadAllRequests = () => {
+    setExtraRequests(dairyService.getExtraMilkRequests());
+    setLeaveRequests(dairyService.getLeaveRequests());
+  };
+
   useEffect(() => {
     if (isAdmin) {
-      setExtraRequests(dairyService.getExtraMilkRequests());
+      loadAllRequests();
       const unsubscribe = dairyService.subscribeToNotifications(() => {
-        setExtraRequests(dairyService.getExtraMilkRequests());
+        loadAllRequests();
       });
       return () => unsubscribe();
     }
   }, [isAdmin]);
 
-  const pendingCount = extraRequests.filter(r => r.status === 'PENDING').length;
+  const pendingCount = 
+    extraRequests.filter(r => r.status === 'PENDING').length + 
+    leaveRequests.filter(l => l.status === 'PENDING').length;
 
   const handleLogout = () => {
     logout();
@@ -286,13 +294,14 @@ export default function Navbar({
         />
       )}
 
-      {/* Vendor Extra Milk Requests Approval Modal */}
+      {/* Vendor Extra Milk & Leave Requests Approval Modal */}
       {isAdmin && (
         <VendorRequestsModal
           isOpen={isRequestsModalOpen}
           onClose={() => setIsRequestsModalOpen(false)}
           requests={extraRequests}
-          onActionComplete={() => setExtraRequests(dairyService.getExtraMilkRequests())}
+          leaveRequests={leaveRequests}
+          onActionComplete={loadAllRequests}
         />
       )}
     </header>

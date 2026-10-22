@@ -24,6 +24,7 @@ export default function CustomerPortal() {
   const [selectedMonth, setSelectedMonth] = useState(currentMonthStr);
   const [ledgerItem, setLedgerItem] = useState(null);
   const [extraRequests, setExtraRequests] = useState([]);
+  const [leaveRequests, setLeaveRequests] = useState([]);
   const [showVacationModal, setShowVacationModal] = useState(false);
   const [showExtraModal, setShowExtraModal] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
@@ -32,6 +33,7 @@ export default function CustomerPortal() {
   const tomorrowStr = new Date(Date.now() + 86400000).toISOString().split('T')[0];
   const [vacationFrom, setVacationFrom] = useState(tomorrowStr);
   const [vacationTo, setVacationTo] = useState(tomorrowStr);
+  const [vacationShift, setVacationShift] = useState('BOTH');
   const [vacationReason, setVacationReason] = useState(lang === 'ta' ? 'வெளியூர் செல்கிறோம்' : 'Out of town');
 
   // Extra milk form state
@@ -56,9 +58,13 @@ export default function CustomerPortal() {
 
   const loadRequests = () => {
     if (!activeCustomer) return;
-    const all = dairyService.getExtraMilkRequests();
-    const myRequests = all.filter(r => r.customerId === activeCustomer.id);
+    const allExtra = dairyService.getExtraMilkRequests();
+    const myRequests = allExtra.filter(r => r.customerId === activeCustomer.id);
     setExtraRequests(myRequests);
+
+    const allLeaves = dairyService.getLeaveRequests();
+    const myLeaves = allLeaves.filter(l => l.customerId === activeCustomer.id);
+    setLeaveRequests(myLeaves);
   };
 
   useEffect(() => {
@@ -77,18 +83,44 @@ export default function CustomerPortal() {
           showToast(`ℹ️ ${t('requestRejectedMsg')}`);
         }
       }
+      if (data.type === 'LEAVE_REQUEST_RESPONDED' && data.payload?.customerId === activeCustomer?.id) {
+        loadRequests();
+        loadData();
+        const req = data.payload;
+        if (req.status === 'ACCEPTED') {
+          showToast(`🏖️ ${t('leaveAcceptedMsg')}`);
+        } else if (req.status === 'REJECTED') {
+          showToast(`ℹ️ ${t('leaveRejectedMsg')}`);
+        }
+      }
+      if (data.type === 'EXTRA_REQUEST_CREATED' || data.type === 'LEAVE_REQUEST_CREATED') {
+        loadRequests();
+      }
     });
 
     return () => unsubscribe();
   }, [activeCustomer, selectedMonth]);
 
+  // Cut-off check for leave request
+  const cutoffCheck = dairyService.checkLeaveCutoff(vacationFrom, vacationShift);
+
   // Handle vacation submit
-  const handleVacationSubmit = (e) => {
+  const handleVacationSubmit = async (e) => {
     e.preventDefault();
-    dairyService.addVacation(activeCustomer.id, vacationFrom, vacationTo, vacationReason);
+    if (!cutoffCheck.allowed) {
+      alert(cutoffCheck.message);
+      return;
+    }
+    await dairyService.requestLeave(
+      activeCustomer,
+      vacationFrom,
+      vacationTo,
+      vacationShift,
+      vacationReason
+    );
     setShowVacationModal(false);
-    showToast(t('vacationSuccess'));
-    loadData();
+    showToast(t('leaveSentNotice'));
+    loadRequests();
   };
 
   // Handle extra milk submit
@@ -319,6 +351,110 @@ export default function CustomerPortal() {
         </div>
       )}
 
+
+      {/* Customer's Leave Requests Status Tracker */}
+      {leaveRequests.length > 0 && (
+        <div className="bg-white rounded-3xl border border-slate-200 p-4 sm:p-5 shadow-sm space-y-3">
+          <div className="flex items-center justify-between border-b pb-2.5">
+            <div className="flex items-center space-x-2">
+              <span className="text-lg">🏖️</span>
+              <h3 className="font-extrabold text-slate-900 text-sm sm:text-base">
+                {t('leaveRequestsTitle')}
+              </h3>
+            </div>
+            <span className="text-xs font-bold text-slate-500">
+              {leaveRequests.length} {lang === 'ta' ? 'கோரிக்கைகள்' : 'Requests'}
+            </span>
+          </div>
+
+          <div className="space-y-2.5">
+            {leaveRequests.slice(0, 4).map((l) => {
+              const isPending = l.status === 'PENDING';
+              const isAccepted = l.status === 'ACCEPTED';
+              const isRejected = l.status === 'REJECTED';
+
+              const shiftBadge = 
+                l.shift === 'MORNING' ? t('shiftMorningOnly') :
+                l.shift === 'EVENING' ? t('shiftEveningOnly') : t('shiftBoth');
+
+              return (
+                <div
+                  key={l.id}
+                  className={`p-3.5 rounded-2xl border transition-all ${
+                    isPending
+                      ? 'bg-amber-50/70 border-amber-300'
+                      : isAccepted
+                        ? 'bg-emerald-50 border-emerald-200'
+                        : 'bg-rose-50 border-rose-200'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <span className="font-black text-sm text-slate-900">
+                          {l.shift === 'MORNING' && '☀️ '}
+                          {l.shift === 'EVENING' && '🌙 '}
+                          {l.shift === 'BOTH' && '☀️🌙 '}
+                          {shiftBadge}
+                        </span>
+                        <span className="text-xs text-slate-500 font-bold">
+                          • {l.fromDate === l.toDate ? l.fromDate : `${l.fromDate} ➡️ ${l.toDate}`}
+                        </span>
+                      </div>
+                      {l.reason && (
+                        <p className="text-xs text-slate-600 mt-0.5">
+                          📌 {l.reason}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="flex-shrink-0">
+                      {isPending && (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-black bg-amber-400 text-slate-900 animate-pulse shadow-sm">
+                          <Clock className="w-3 h-3 mr-1" />
+                          {t('statusPending')}
+                        </span>
+                      )}
+                      {isAccepted && (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-black bg-emerald-600 text-white shadow-sm">
+                          <CheckCircle2 className="w-3 h-3 mr-1" />
+                          {t('statusAccepted')}
+                        </span>
+                      )}
+                      {isRejected && (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-black bg-rose-600 text-white shadow-sm">
+                          <XCircle className="w-3 h-3 mr-1" />
+                          {t('statusRejected')}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mt-2 text-xs pt-2 border-t border-slate-200/60 font-semibold flex items-center space-x-1.5">
+                    {isPending && (
+                      <span className="text-amber-800 flex items-center">
+                        <Clock className="w-3.5 h-3.5 mr-1 text-amber-600 animate-spin" />
+                        {t('pendingApproval')}
+                      </span>
+                    )}
+                    {isAccepted && (
+                      <span className="text-emerald-800">
+                        🎉 {l.vendorNote || t('leaveAcceptedMsg')}
+                      </span>
+                    )}
+                    {isRejected && (
+                      <span className="text-rose-700">
+                        ⚠️ {l.vendorNote || t('leaveRejectedMsg')}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Monthly Passbook / Calendar */}
       <div 
         id="tour-customer-passbook"
@@ -452,6 +588,47 @@ export default function CustomerPortal() {
 
               <div>
                 <label className="text-xs font-bold text-slate-700 block mb-1">
+                  {t('leaveShiftLabel')}
+                </label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setVacationShift('BOTH')}
+                    className={`py-2 px-1 text-center rounded-xl text-[11px] font-bold border transition ${
+                      vacationShift === 'BOTH'
+                        ? 'bg-amber-500 text-white border-amber-600 shadow-sm'
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    ☀️🌙 {lang === 'ta' ? 'முழு நாள்' : 'Both'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setVacationShift('MORNING')}
+                    className={`py-2 px-1 text-center rounded-xl text-[11px] font-bold border transition ${
+                      vacationShift === 'MORNING'
+                        ? 'bg-amber-500 text-white border-amber-600 shadow-sm'
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    ☀️ {lang === 'ta' ? 'காலை' : 'Morning'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setVacationShift('EVENING')}
+                    className={`py-2 px-1 text-center rounded-xl text-[11px] font-bold border transition ${
+                      vacationShift === 'EVENING'
+                        ? 'bg-amber-500 text-white border-amber-600 shadow-sm'
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    🌙 {lang === 'ta' ? 'மாலை' : 'Evening'}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">
                   {t('reason')}
                 </label>
                 <input
@@ -461,6 +638,13 @@ export default function CustomerPortal() {
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium"
                 />
               </div>
+
+              {!cutoffCheck.allowed && (
+                <div className="bg-rose-50 border border-rose-200 rounded-2xl p-2.5 text-rose-800 text-xs font-bold flex items-start space-x-2">
+                  <span className="text-base">⚠️</span>
+                  <span>{cutoffCheck.message}</span>
+                </div>
+              )}
 
               <div className="flex items-center space-x-2 pt-2">
                 <button
@@ -472,7 +656,12 @@ export default function CustomerPortal() {
                 </button>
                 <button
                   type="submit"
-                  className="w-1/2 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-900 text-xs font-black shadow"
+                  disabled={!cutoffCheck.allowed}
+                  className={`w-1/2 py-2.5 rounded-xl text-xs font-black shadow transition ${
+                    cutoffCheck.allowed
+                      ? 'bg-amber-500 hover:bg-amber-600 text-slate-900 cursor-pointer'
+                      : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                  }`}
                 >
                   {t('submitLeaveBtn')}
                 </button>

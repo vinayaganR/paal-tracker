@@ -136,7 +136,12 @@ export const dairyService = {
 
     // Map each customer to a delivery row
     return customers.map(cust => {
-      const isPaused = vacationList.some(v => v.customerId === cust.id && v.date === dateStr);
+      const activeVacation = vacationList.find(v => 
+        v.customerId === cust.id && 
+        v.date === dateStr && 
+        (!v.shift || v.shift === 'BOTH' || v.shift === shift)
+      );
+      const isPaused = Boolean(activeVacation);
       const defaultQty = shift === 'MORNING' ? (cust.defaultMorningQty || 0) : (cust.defaultEveningQty || 0);
       
       const record = records[cust.id] || {
@@ -206,9 +211,59 @@ export const dairyService = {
     return saved ? JSON.parse(saved) : [];
   },
 
-  addVacation: (customerId, fromDate, toDate, reason = 'வெளியூர் செல்கிறோம் (Out of town)') => {
+  // Cut-off rule checker for village dairy timings
+  checkLeaveCutoff: (dateStr, shift = 'BOTH') => {
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+
+    // If future date (tomorrow onwards), always valid!
+    if (dateStr > todayStr) {
+      return { allowed: true };
+    }
+
+    // Past date cannot be paused retroactively
+    if (dateStr < todayStr) {
+      return {
+        allowed: false,
+        message: 'கடந்த தேதிகளுக்கு லீவு பதிவு செய்ய முடியாது (Cannot apply leave for past dates)'
+      };
+    }
+
+    // Date is TODAY: check strict dairy dispatch cut-off hours
+    const currentHour = now.getHours();
+    const currentMinutes = now.getMinutes();
+    const currentTimeDec = currentHour + currentMinutes / 60.0;
+
+    // Morning delivery departs early (5:00 AM)
+    if (shift === 'MORNING' || shift === 'BOTH') {
+      if (currentTimeDec >= 5.0) {
+        return {
+          allowed: false,
+          shift: 'MORNING',
+          cutoff: '5:00 AM',
+          message: 'காலை பால் விநியோகம் ஏற்கனவே புறப்பட்டுவிட்டது! (Morning milk is already out for delivery). காலை லீவுக்கு முந்தைய நாளே தெரிவிக்க வேண்டும். அவசர தேவைக்கு பண்ணையாளரை அழைக்கவும்.'
+        };
+      }
+    }
+
+    // Evening delivery packing completes at 3:00 PM (15:00)
+    if (shift === 'EVENING' || shift === 'BOTH') {
+      if (currentTimeDec >= 15.0) {
+        return {
+          allowed: false,
+          shift: 'EVENING',
+          cutoff: '3:00 PM',
+          message: 'மாலை பால் பேக்கிங் பணி தொடங்கிவிட்டது! மாலை ஷிப்ட் லீவுக்கு மதியம் 3:00 மணிக்குள் தெரிவிக்க வேண்டும் (Evening leave must be notified before 3:00 PM).'
+        };
+      }
+    }
+
+    return { allowed: true };
+  },
+
+  // Add confirmed vacation days with specific shift ('BOTH' | 'MORNING' | 'EVENING')
+  addVacation: (customerId, fromDate, toDate, shift = 'BOTH', reason = 'வெளியூர் பயணம்') => {
     const list = dairyService.getVacationList();
-    // Expand date range to individual days
     const days = [];
     let cur = new Date(fromDate);
     const end = new Date(toDate);
@@ -219,6 +274,7 @@ export const dairyService = {
         id: `vac_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
         customerId,
         date: dateStr,
+        shift, // 'BOTH', 'MORNING', or 'EVENING'
         reason,
         createdAt: new Date().toISOString()
       });
@@ -228,6 +284,144 @@ export const dairyService = {
     const updated = [...list, ...days];
     localStorage.setItem('paal_vandi_vacations', JSON.stringify(updated));
     return updated;
+  },
+
+  // Leave Requests from Customers
+  getLeaveRequests: () => {
+    const saved = localStorage.getItem('paal_vandi_leave_requests');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    const defaultLeaves = [
+      {
+        id: "leave_demo_1",
+        customerId: "cust_2",
+        customerName: "சுந்தரம் ஆசிரியர் (Sundaram)",
+        houseNo: "28",
+        phone: "9789223456",
+        fromDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+        toDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+        shift: "BOTH",
+        reason: "சொந்த ஊர் செல்கிறோம் (Going to native)",
+        status: "PENDING",
+        createdAt: new Date().toISOString()
+      }
+    ];
+    localStorage.setItem('paal_vandi_leave_requests', JSON.stringify(defaultLeaves));
+    return defaultLeaves;
+  },
+
+  // Customer submits leave request with specific shift ('BOTH', 'MORNING', 'EVENING')
+  requestLeave: async (customerData, fromDate, toDate, shift = 'BOTH', reason = 'வெளியூர் பயணம்') => {
+    const list = dairyService.getLeaveRequests();
+    const customerId = typeof customerData === 'string' ? customerData : customerData.id;
+    const customer = typeof customerData === 'object' ? customerData : dairyService.getCustomers().find(c => c.id === customerId);
+
+    const newLeave = {
+      id: `leave_${Date.now()}`,
+      customerId,
+      customerName: customer?.name || 'Valued Customer',
+      houseNo: customer?.houseNo || '—',
+      phone: customer?.phone || '',
+      fromDate,
+      toDate,
+      shift,
+      reason,
+      status: 'PENDING',
+      createdAt: new Date().toISOString()
+    };
+
+    const updated = [newLeave, ...list];
+    localStorage.setItem('paal_vandi_leave_requests', JSON.stringify(updated));
+
+    // Try posting to server API asynchronously
+    try {
+      fetch('/api/leave-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newLeave)
+      }).catch(() => {});
+    } catch (e) { /* offline fallback */ }
+
+    // Broadcast event to notify Vendor in real time
+    dairyService.broadcastEvent('LEAVE_REQUEST_CREATED', newLeave);
+
+    return newLeave;
+  },
+
+  // Vendor responds to leave request (Accept or Reject)
+  respondToLeaveRequest: async (requestId, status, vendorNote = '') => {
+    const list = dairyService.getLeaveRequests();
+    const index = list.findIndex(l => l.id === requestId);
+    if (index === -1) return null;
+
+    const currentReq = list[index];
+    const defaultNote = status === 'ACCEPTED'
+      ? 'சரி! லீவு குறிக்கப்பட்டது. பால் விநியோகம் நிறுத்தப்படும் (Leave confirmed! Milk delivery paused)'
+      : 'மன்னிக்கவும்! லீவு ஏற்கப்படவில்லை (Sorry, cannot pause delivery at this time)';
+
+    const updatedReq = {
+      ...currentReq,
+      status, // 'ACCEPTED' or 'REJECTED'
+      vendorNote: vendorNote || defaultNote,
+      respondedAt: new Date().toISOString()
+    };
+
+    list[index] = updatedReq;
+    localStorage.setItem('paal_vandi_leave_requests', JSON.stringify(list));
+
+    // If ACCEPTED, register vacation and update delivery sheet for that customer!
+    if (status === 'ACCEPTED') {
+      dairyService.addVacation(
+        currentReq.customerId,
+        currentReq.fromDate,
+        currentReq.toDate,
+        currentReq.shift,
+        currentReq.reason
+      );
+
+      // Mark affected dates & shifts as SKIPPED in delivery sheet
+      let cur = new Date(currentReq.fromDate);
+      const end = new Date(currentReq.toDate);
+      while (cur <= end) {
+        const dStr = cur.toISOString().split('T')[0];
+        const shiftsToSkip = currentReq.shift === 'BOTH' ? ['MORNING', 'EVENING'] : [currentReq.shift];
+        shiftsToSkip.forEach(s => {
+          dairyService.updateDeliveryRecord(
+            dStr,
+            s,
+            currentReq.customerId,
+            'SKIPPED',
+            0,
+            0,
+            `விடுப்பு (${currentReq.shift === 'BOTH' ? 'முழு நாள் லீவு' : currentReq.shift + ' லீவு'})`
+          );
+        });
+        cur.setDate(cur.getDate() + 1);
+      }
+    }
+
+    // Try pushing response to server API asynchronously
+    try {
+      fetch('/api/leave-requests', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requestId,
+          status,
+          vendorNote: updatedReq.vendorNote
+        })
+      }).catch(() => {});
+    } catch (e) { /* offline fallback */ }
+
+    // Broadcast event so Customer tab receives immediate confirmation!
+    dairyService.broadcastEvent('LEAVE_REQUEST_RESPONDED', updatedReq);
+
+    return updatedReq;
   },
 
   // Extra Milk Requests from Customers

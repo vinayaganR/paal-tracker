@@ -22,6 +22,7 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
   const [activeModalCust, setActiveModalCust] = useState(null);
   const [customExtraQty, setCustomExtraQty] = useState(0.5);
   const [extraRequests, setExtraRequests] = useState([]);
+  const [leaveRequests, setLeaveRequests] = useState([]);
   const [isRequestsModalOpen, setIsRequestsModalOpen] = useState(false);
 
   const loadData = () => {
@@ -30,8 +31,10 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
   };
 
   const loadRequests = () => {
-    const all = dairyService.getExtraMilkRequests();
-    setExtraRequests(all);
+    const allExtra = dairyService.getExtraMilkRequests();
+    const allLeaves = dairyService.getLeaveRequests();
+    setExtraRequests(allExtra);
+    setLeaveRequests(allLeaves);
   };
 
   useEffect(() => {
@@ -46,7 +49,9 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
     return () => unsubscribe();
   }, [selectedDate, selectedShift]);
 
-  const pendingRequests = extraRequests.filter(r => r.status === 'PENDING');
+  const pendingExtra = extraRequests.filter(r => r.status === 'PENDING');
+  const pendingLeaves = leaveRequests.filter(l => l.status === 'PENDING');
+  const totalPending = pendingExtra.length + pendingLeaves.length;
 
   // Handle Mark Delivered
   const handleMarkDelivered = (item, extraLitres = 0) => {
@@ -132,8 +137,8 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
   return (
     <div className="space-y-5">
       
-      {/* Live Incoming Extra Milk Request Notification Banner for Appa */}
-      {pendingRequests.length > 0 && (
+      {/* Live Incoming Requests (Extra Milk & Leave Requests) Notification Banner for Appa */}
+      {totalPending > 0 && (
         <div className="bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-slate-950 p-4 sm:p-5 rounded-3xl shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-2 border-amber-300 ring-4 ring-amber-400/20 animate-in fade-in">
           <div className="flex items-center space-x-3.5">
             <div className="w-11 h-11 rounded-2xl bg-slate-950 text-amber-300 flex items-center justify-center text-xl flex-shrink-0 shadow-md">
@@ -142,14 +147,22 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
             <div>
               <div className="flex items-center space-x-2">
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-slate-950 text-white tracking-wider">
-                  {t('newExtraNotification')}
+                  {pendingLeaves.length > 0 ? (lang === 'ta' ? 'புதிய லீவு கோரிக்கை' : 'New Leave Request') : t('newExtraNotification')}
                 </span>
                 <span className="text-xs font-bold text-slate-900">
-                  {pendingRequests.length} {t('pendingRequests')}
+                  {totalPending} {t('pendingRequests')}
                 </span>
               </div>
               <h3 className="font-extrabold text-base text-slate-950 mt-0.5">
-                {pendingRequests[0].customerName} ({t('door')}: {pendingRequests[0].houseNo}) • <span className="font-black text-emerald-950">+{pendingRequests[0].extraLitres}L {pendingRequests[0].shift === 'MORNING' ? t('morning') : t('evening')}</span>
+                {pendingLeaves.length > 0 ? (
+                  <span>
+                    🏖️ {pendingLeaves[0].customerName} ({t('door')}: {pendingLeaves[0].houseNo}) • <span className="font-black text-rose-950">{pendingLeaves[0].shift === 'MORNING' ? t('shiftMorningOnly') : pendingLeaves[0].shift === 'EVENING' ? t('shiftEveningOnly') : t('shiftBoth')}</span> ({pendingLeaves[0].fromDate})
+                  </span>
+                ) : (
+                  <span>
+                    🥛 {pendingExtra[0].customerName} ({t('door')}: {pendingExtra[0].houseNo}) • <span className="font-black text-emerald-950">+{pendingExtra[0].extraLitres}L {pendingExtra[0].shift === 'MORNING' ? t('morning') : t('evening')}</span>
+                  </span>
+                )}
               </h3>
             </div>
           </div>
@@ -161,7 +174,7 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
             >
               <span>{t('extraRequestsTitle')}</span>
               <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-amber-400 text-slate-950 font-black">
-                {pendingRequests.length}
+                {totalPending}
               </span>
             </button>
           </div>
@@ -504,11 +517,12 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
         </div>
       )}
 
-      {/* Vendor Extra Milk Requests Modal */}
+      {/* Vendor Requests Modal (Extra Milk + Leave Requests) */}
       <VendorRequestsModal
         isOpen={isRequestsModalOpen}
         onClose={() => setIsRequestsModalOpen(false)}
         requests={extraRequests}
+        leaveRequests={leaveRequests}
         onActionComplete={() => {
           loadRequests();
           loadData();
