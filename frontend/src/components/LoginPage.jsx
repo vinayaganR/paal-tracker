@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { dairyService } from '../services/dairyService';
@@ -16,7 +17,13 @@ import {
 
 export default function LoginPage() {
   const { t, lang, toggleLanguage } = useLanguage();
-  const { loginAsOwner, loginAsCustomer, dairyInfo } = useAuth();
+  const { currentUser, isAdmin, loginAsOwner, loginAsCustomer, dairyInfo } = useAuth();
+  const navigate = useNavigate();
+
+  // If already logged in, redirect straight to the appropriate dashboard!
+  if (currentUser) {
+    return <Navigate to={isAdmin ? "/runner" : "/portal"} replace />;
+  }
 
   const [activeTab, setActiveTab] = useState('OWNER'); // 'OWNER' | 'CUSTOMER'
   const [pin, setPin] = useState('');
@@ -31,6 +38,8 @@ export default function LoginPage() {
     const res = loginAsOwner(pin);
     if (!res.success) {
       setErrorMsg(t('invalidPin'));
+    } else {
+      navigate('/runner', { replace: true });
     }
   };
 
@@ -40,11 +49,14 @@ export default function LoginPage() {
     const res = loginAsCustomer(phone);
     if (!res.success) {
       setErrorMsg(t('customerNotFound'));
+    } else {
+      navigate('/portal', { replace: true });
     }
   };
 
   const handleQuickCustomerLogin = (cust) => {
     loginAsCustomer(cust.id);
+    navigate('/portal', { replace: true });
   };
 
   return (

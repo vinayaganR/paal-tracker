@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Routes, Route, Navigate, NavLink } from 'react-router-dom';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LoginPage from './components/LoginPage';
@@ -22,16 +23,20 @@ function MainApp() {
   const { t } = useLanguage();
   const { currentUser, isAdmin, isCustomer, dairyInfo, updateDairyInfo } = useAuth();
 
-  // If nobody is logged in, show the clean Login Gateway screen!
+  // If nobody is logged in, restrict routing to LoginPage
   if (!currentUser) {
-    return <LoginPage />;
+    return (
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    );
   }
 
   // Today's date YYYY-MM-DD
   const todayStr = new Date().toISOString().split('T')[0];
   const [selectedDate, setSelectedDate] = useState(todayStr);
   const [selectedShift, setSelectedShift] = useState('MORNING');
-  const [activeTab, setActiveTab] = useState('runner'); // 'runner' | 'customers' | 'billing' | 'milking'
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [settingsForm, setSettingsForm] = useState(dairyInfo);
   const [isTourOpen, setIsTourOpen] = useState(false);
@@ -158,119 +163,130 @@ function MainApp() {
             <div className="bg-white border-b border-slate-200">
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <nav className="flex space-x-2 sm:space-x-4 overflow-x-auto py-2.5 no-scrollbar">
-                  <button
-                    onClick={() => setActiveTab('runner')}
-                    className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-extrabold transition whitespace-nowrap ${
-                      activeTab === 'runner'
-                        ? 'bg-emerald-600 text-white shadow-sm'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                    }`}
+                  <NavLink
+                    to="/runner"
+                    className={({ isActive }) =>
+                      `flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-extrabold transition whitespace-nowrap ${
+                        isActive
+                          ? 'bg-emerald-600 text-white shadow-sm'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                      }`
+                    }
                   >
                     <Bike className="w-4 h-4" />
                     <span>{t('routeRunner')}</span>
-                  </button>
+                  </NavLink>
 
-                  <button
-                    onClick={() => setActiveTab('customers')}
-                    className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-extrabold transition whitespace-nowrap ${
-                      activeTab === 'customers'
-                        ? 'bg-emerald-600 text-white shadow-sm'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                    }`}
+                  <NavLink
+                    to="/customers"
+                    className={({ isActive }) =>
+                      `flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-extrabold transition whitespace-nowrap ${
+                        isActive
+                          ? 'bg-emerald-600 text-white shadow-sm'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                      }`
+                    }
                   >
                     <Users className="w-4 h-4" />
                     <span>{t('customers')}</span>
-                  </button>
+                  </NavLink>
 
-                  <button
+                  <NavLink
                     id="tour-tab-billing"
-                    onClick={() => setActiveTab('billing')}
-                    className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-extrabold transition whitespace-nowrap ${
-                      activeTab === 'billing'
-                        ? 'bg-emerald-600 text-white shadow-sm'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                    }`}
+                    to="/billing"
+                    className={({ isActive }) =>
+                      `flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-extrabold transition whitespace-nowrap ${
+                        isActive
+                          ? 'bg-emerald-600 text-white shadow-sm'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                      }`
+                    }
                   >
                     <Receipt className="w-4 h-4" />
                     <span>{t('billing')}</span>
-                  </button>
+                  </NavLink>
 
-                  <button
+                  <NavLink
                     id="tour-tab-milking"
-                    onClick={() => setActiveTab('milking')}
-                    className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-extrabold transition whitespace-nowrap ${
-                      activeTab === 'milking'
-                        ? 'bg-emerald-600 text-white shadow-sm'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                    }`}
+                    to="/milking"
+                    className={({ isActive }) =>
+                      `flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-extrabold transition whitespace-nowrap ${
+                        isActive
+                          ? 'bg-emerald-600 text-white shadow-sm'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                      }`
+                    }
                   >
                     <Milk className="w-4 h-4" />
                     <span>{t('milkingStock')}</span>
-                  </button>
+                  </NavLink>
                 </nav>
               </div>
             </div>
 
-            {/* Appa Main Screen Content */}
+            {/* Appa Main Screen Content with URL-driven Routes */}
             <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 pb-24 sm:pb-12">
-              {activeTab === 'runner' && (
-                <DeliveryRunner selectedDate={selectedDate} selectedShift={selectedShift} />
-              )}
-
-              {activeTab === 'customers' && (
-                <CustomerDirectory />
-              )}
-
-              {activeTab === 'billing' && (
-                <BillingLedger />
-              )}
-
-              {activeTab === 'milking' && (
-                <MilkYieldTracker selectedDate={selectedDate} />
-              )}
+              <Routes>
+                <Route path="/" element={<Navigate to="/runner" replace />} />
+                <Route path="/runner" element={<DeliveryRunner selectedDate={selectedDate} selectedShift={selectedShift} />} />
+                <Route path="/customers" element={<CustomerDirectory />} />
+                <Route path="/billing" element={<BillingLedger />} />
+                <Route path="/milking" element={<MilkYieldTracker selectedDate={selectedDate} />} />
+                <Route path="/portal" element={<CustomerPortal />} />
+                <Route path="/login" element={<Navigate to="/runner" replace />} />
+                <Route path="*" element={<Navigate to="/runner" replace />} />
+              </Routes>
             </main>
 
             {/* Mobile Bottom Bar for Appa */}
             <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-2 py-2 flex items-center justify-around shadow-lg">
-              <button
-                onClick={() => setActiveTab('runner')}
-                className={`flex flex-col items-center py-1 px-2.5 rounded-xl text-[10px] font-bold ${
-                  activeTab === 'runner' ? 'text-emerald-700 font-extrabold' : 'text-slate-500'
-                }`}
+              <NavLink
+                to="/runner"
+                className={({ isActive }) =>
+                  `flex flex-col items-center py-1 px-2.5 rounded-xl text-[10px] font-bold ${
+                    isActive ? 'text-emerald-700 font-extrabold' : 'text-slate-500'
+                  }`
+                }
               >
                 <Bike className="w-5 h-5 mb-0.5" />
                 <span>{t('route')}</span>
-              </button>
+              </NavLink>
 
-              <button
-                onClick={() => setActiveTab('customers')}
-                className={`flex flex-col items-center py-1 px-2.5 rounded-xl text-[10px] font-bold ${
-                  activeTab === 'customers' ? 'text-emerald-700 font-extrabold' : 'text-slate-500'
-                }`}
+              <NavLink
+                to="/customers"
+                className={({ isActive }) =>
+                  `flex flex-col items-center py-1 px-2.5 rounded-xl text-[10px] font-bold ${
+                    isActive ? 'text-emerald-700 font-extrabold' : 'text-slate-500'
+                  }`
+                }
               >
                 <Users className="w-5 h-5 mb-0.5" />
                 <span>{t('customers')}</span>
-              </button>
+              </NavLink>
 
-              <button
-                onClick={() => setActiveTab('billing')}
-                className={`flex flex-col items-center py-1 px-2.5 rounded-xl text-[10px] font-bold ${
-                  activeTab === 'billing' ? 'text-emerald-700 font-extrabold' : 'text-slate-500'
-                }`}
+              <NavLink
+                to="/billing"
+                className={({ isActive }) =>
+                  `flex flex-col items-center py-1 px-2.5 rounded-xl text-[10px] font-bold ${
+                    isActive ? 'text-emerald-700 font-extrabold' : 'text-slate-500'
+                  }`
+                }
               >
                 <Receipt className="w-5 h-5 mb-0.5" />
                 <span>{t('billing')}</span>
-              </button>
+              </NavLink>
 
-              <button
-                onClick={() => setActiveTab('milking')}
-                className={`flex flex-col items-center py-1 px-2.5 rounded-xl text-[10px] font-bold ${
-                  activeTab === 'milking' ? 'text-emerald-700 font-extrabold' : 'text-slate-500'
-                }`}
+              <NavLink
+                to="/milking"
+                className={({ isActive }) =>
+                  `flex flex-col items-center py-1 px-2.5 rounded-xl text-[10px] font-bold ${
+                    isActive ? 'text-emerald-700 font-extrabold' : 'text-slate-500'
+                  }`
+                }
               >
                 <Milk className="w-5 h-5 mb-0.5" />
                 <span>{t('milkingStock')}</span>
-              </button>
+              </NavLink>
             </nav>
           </>
         )}
@@ -278,7 +294,12 @@ function MainApp() {
         {/* -------------------- 🏡 CUSTOMER VIEW -------------------- */}
         {isCustomer && (
           <main className="max-w-4xl mx-auto px-3 sm:px-6 lg:px-8 py-5 pb-12">
-            <CustomerPortal />
+            <Routes>
+              <Route path="/" element={<Navigate to="/portal" replace />} />
+              <Route path="/portal" element={<CustomerPortal />} />
+              <Route path="/login" element={<Navigate to="/portal" replace />} />
+              <Route path="*" element={<Navigate to="/portal" replace />} />
+            </Routes>
           </main>
         )}
 
