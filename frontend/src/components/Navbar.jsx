@@ -4,6 +4,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import BrandLogoModal from './BrandLogoModal';
 import DairyNavbarArt from './DairyNavbarArt';
+import cowImg from '../assets/cow-transparent.png';
 import { 
   Sun, 
   Moon, 
@@ -97,6 +98,43 @@ export default function Navbar({
                 <Pencil className="w-3.5 h-3.5" />
               </button>
             )}
+
+            {/* Realistic Black-and-White Holstein Cow on Swaying Grass (Placed in flex flow so it NEVER overlaps text!) */}
+            <div className="hidden md:flex items-end pl-1 lg:pl-3 pointer-events-none select-none cow-entrance-anim self-center">
+              <div className="relative flex items-end">
+                {/* Grass Mound Base Glow */}
+                <div className="absolute -bottom-1 -left-2 -right-2 h-2.5 bg-gradient-to-t from-emerald-600/35 via-green-500/20 to-transparent rounded-full blur-[1px]" />
+
+                {/* Left Swaying Grass Blades */}
+                <svg 
+                  className="absolute -bottom-0.5 -left-1.5 w-8 h-3 text-emerald-600/80 overflow-visible"
+                  viewBox="0 0 32 12" 
+                  fill="none"
+                >
+                  <path className="grass-blade-1" d="M3 12 C 4 8, 2 4, 1 1 C 4 4, 5 8, 6 12 Z" fill="#15803d" />
+                  <path className="grass-blade-2" d="M9 12 C 10 7, 13 3, 15 1 C 14 5, 12 8, 11 12 Z" fill="#22c55e" />
+                  <path className="grass-blade-3" d="M18 12 C 17 8, 15 4, 13 1 C 16 5, 18 8, 19 12 Z" fill="#166534" />
+                </svg>
+
+                {/* The Authentic Cow from User's Uploaded Reference */}
+                <img
+                  src={cowImg}
+                  alt="Dairy Cow"
+                  className="h-10 sm:h-11 md:h-12 w-auto object-contain drop-shadow-sm filter contrast-[1.02] brightness-[1.01]"
+                  loading="eager"
+                />
+
+                {/* Right Swaying Grass Blades */}
+                <svg 
+                  className="absolute -bottom-0.5 -right-2 w-7 h-3 text-emerald-500/80 overflow-visible"
+                  viewBox="0 0 28 12" 
+                  fill="none"
+                >
+                  <path className="grass-blade-2" d="M3 12 C 4 7, 7 3, 9 1 C 8 5, 6 8, 5 12 Z" fill="#22c55e" />
+                  <path className="grass-blade-1" d="M12 12 C 11 7, 9 4, 7 2 C 11 5, 13 8, 14 12 Z" fill="#166534" />
+                </svg>
+              </div>
+            </div>
           </div>
 
           {/* Center: Shift & Date Selector (ONLY for Admin / Appa) */}
