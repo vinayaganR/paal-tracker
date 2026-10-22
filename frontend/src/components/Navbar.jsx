@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import BrandLogoModal from './BrandLogoModal';
+import DairyNavbarArt from './DairyNavbarArt';
 import { 
   Sun, 
   Moon, 
@@ -26,51 +27,57 @@ export default function Navbar({
   const [isBrandModalOpen, setIsBrandModalOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-emerald-100 shadow-sm">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-emerald-100 shadow-sm relative overflow-hidden">
+      {/* Premium Animated Dairy Background Art (Flowing satin ribbons, cow on grass, floating milk droplets) */}
+      <DairyNavbarArt />
+
+      {/* Main Navbar Contents (z-10 ensures all interactive controls are fully clickable) */}
+      <div className="relative z-10 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 sm:h-20">
           
-          {/* Brand Logo & Title with Edit Trigger for Admin */}
-          <div 
-            onClick={isAdmin ? () => setIsBrandModalOpen(true) : undefined}
-            className={`flex items-center space-x-3 group ${isAdmin ? 'cursor-pointer' : ''}`}
-            title={isAdmin ? t('editBrandLogo') : undefined}
-          >
-            {/* Logo Image / Emoji Box with Camera Overlay */}
-            <div className="relative">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-tr from-emerald-600 to-green-400 flex items-center justify-center shadow-md shadow-emerald-200 overflow-hidden">
-                {dairyInfo?.logoUrl ? (
-                  <img 
-                    src={dairyInfo.logoUrl} 
-                    alt="Dairy Logo" 
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <span className="text-2xl">{dairyInfo?.logoEmoji || '🥛'}</span>
-                )}
-              </div>
-
-              {isAdmin && (
-                <div 
-                  className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-slate-900 text-white flex items-center justify-center shadow text-[10px] opacity-90 group-hover:scale-110 group-hover:bg-emerald-600 transition"
-                  title={t('editBrandLogo')}
-                >
-                  <Pencil className="w-2.5 h-2.5" />
-                </div>
+          {/* Brand Logo & Title */}
+          <div className="flex items-center space-x-3">
+            {/* Logo Image / Emoji Box */}
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-tr from-emerald-600 to-green-400 flex items-center justify-center shadow-md shadow-emerald-200 overflow-hidden flex-shrink-0">
+              {dairyInfo?.logoUrl ? (
+                <img 
+                  src={dairyInfo.logoUrl} 
+                  alt="Dairy Logo" 
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span className="text-2xl">{dairyInfo?.logoEmoji || '🥛'}</span>
               )}
             </div>
 
-            {/* Brand Title & Farm Name */}
+            {/* Brand Title, Farm Name & Dedicated Single Edit Button */}
             <div>
               <div className="flex items-center space-x-1.5">
-                <h1 className="font-extrabold text-lg sm:text-xl text-slate-900 tracking-tight flex items-center group-hover:text-emerald-700 transition">
-                  {dairyInfo?.appName || t('appName')}
-                  <span className="ml-1.5 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800">
+                <h1 className="font-extrabold text-lg sm:text-xl text-slate-900 tracking-tight flex items-center select-none">
+                  {/* Static, sharp, professional brand title (no text wobble) */}
+                  <span>{dairyInfo?.appName || t('appName')}</span>
+
+                  {/* Subtle pulsing premium brand indicator green dot */}
+                  <span className="relative flex h-2 w-2 mx-1.5" title="Active Dairy Farm">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-sm shadow-emerald-400"></span>
+                  </span>
+
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200/60">
                     Live
                   </span>
                 </h1>
+
+                {/* Single Dedicated Edit Button */}
                 {isAdmin && (
-                  <Pencil className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition" />
+                  <button
+                    type="button"
+                    onClick={() => setIsBrandModalOpen(true)}
+                    className="p-1 rounded-lg text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 transition border border-transparent hover:border-emerald-200"
+                    title={t('editBrandLogo')}
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
                 )}
               </div>
               <p className="text-xs text-slate-500 font-medium hidden sm:block">
