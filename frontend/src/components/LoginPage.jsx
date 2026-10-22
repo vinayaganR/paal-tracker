@@ -53,15 +53,23 @@ export default function LoginPage() {
       {/* Top Header with Language Toggle */}
       <div className="max-w-xl w-full mx-auto flex items-center justify-between pt-2 pb-6">
         <div className="flex items-center space-x-2">
-          <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center">
-            <span className="text-2xl">🥛</span>
+          <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center overflow-hidden">
+            {dairyInfo?.logoUrl ? (
+              <img 
+                src={dairyInfo.logoUrl} 
+                alt="Logo" 
+                className="w-full h-full object-cover" 
+              />
+            ) : (
+              <span className="text-2xl">{dairyInfo?.logoEmoji || '🥛'}</span>
+            )}
           </div>
           <div>
             <h1 className="font-extrabold text-base tracking-tight text-white">
-              {t('appName')}
+              {dairyInfo?.appName || t('appName')}
             </h1>
             <p className="text-[11px] text-emerald-300 font-medium">
-              {dairyInfo.farmName}
+              {dairyInfo?.farmName || 'dheena dhinesh farming'}
             </p>
           </div>
         </div>

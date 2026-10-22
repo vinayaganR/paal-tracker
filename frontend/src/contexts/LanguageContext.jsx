@@ -162,6 +162,19 @@ const translations = {
     upiExplain: "வாடிக்கையாளர்கள் ஸ்கேன் செய்து பணம் அனுப்ப இந்த UPI ஐடி பயன்படுத்தப்படும்.",
     addressLabel: "முகவரி (Address)",
 
+    // Brand & Logo Customization
+    editBrandLogo: "பிராண்ட் & லோகோ திருத்தம்",
+    editBrandLogoDesc: "உங்கள் பண்ணை பெயர், லோகோ படம் மற்றும் விவரங்களை மாற்றலாம்.",
+    uploadLogoPhoto: "புதிய லோகோ படம் பதிவேற்றுக (Upload Image)",
+    deleteLogoPhoto: "லோகோவை நீக்குக (Delete Logo)",
+    choosePresetIcon: "அல்லது ஐகான் தேர்ந்தெடுக்கவும்:",
+    brandNameLabel: "செயலி / பிராண்ட் பெயர் (Brand Name)",
+    farmSubtitleLabel: "பண்ணை துணைப்பெயர் (Farm Tagline)",
+    livePreview: "முன்னோட்டம் (Live Preview):",
+    confirmDeleteLogo: "தற்போதுள்ள லோகோ படத்தை நீக்கவா?",
+    logoSavedSuccess: "லோகோ & பிராண்ட் விவரங்கள் வெற்றிகரமாக சேமிக்கப்பட்டன! 🎉",
+    logoDeletedSuccess: "லோகோ நீக்கப்பட்டு இயல்பு நிலைக்கு மாற்றப்பட்டது!",
+
     // General
     litres: "லிட்டர்",
     rupees: "₹",
@@ -368,6 +381,19 @@ const translations = {
     upiIdLabel: "UPI ID (For GPay / PhonePe QR Payments)",
     upiExplain: "This UPI ID will be embedded in WhatsApp invoices and QR codes for customers to pay directly.",
     addressLabel: "Farm Address",
+
+    // Brand & Logo Customization
+    editBrandLogo: "Edit Brand & Logo",
+    editBrandLogoDesc: "Customize your farm logo image, brand name, and subtitle.",
+    uploadLogoPhoto: "Upload Logo Image",
+    deleteLogoPhoto: "Remove / Delete Logo",
+    choosePresetIcon: "Or choose a preset icon:",
+    brandNameLabel: "Brand / App Name",
+    farmSubtitleLabel: "Farm Subtitle (Tagline)",
+    livePreview: "Live Preview:",
+    confirmDeleteLogo: "Remove the custom logo image?",
+    logoSavedSuccess: "Logo & Brand updated successfully! 🎉",
+    logoDeletedSuccess: "Logo removed, reverted to default icon!",
 
     // General
     litres: "Litres",

@@ -25,11 +25,11 @@ export function AuthProvider({ children }) {
 
   const [dairyInfo, setDairyInfo] = useState(() => {
     const saved = localStorage.getItem('paal_vandi_dairy_info');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) { /* fallback */ }
-    }
-    return {
-      farmName: "ஸ்ரீ காமதேனு பால் பண்ணை",
+    const defaultData = {
+      appName: "PaalVandi",
+      farmName: "dheena dhinesh farming",
+      logoUrl: null,
+      logoEmoji: "🥛",
       ownerName: "மாரிமுத்து (அப்பா)",
       ownerPin: "1234",
       phone: "+91 98421 54321",
@@ -37,6 +37,20 @@ export function AuthProvider({ children }) {
       address: "12, காமராஜர் தெரு, பண்ணை தோட்டம்",
       defaultRatePerLitre: 56,
     };
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return {
+          ...defaultData,
+          ...parsed,
+          appName: parsed.appName || defaultData.appName,
+          farmName: parsed.farmName || defaultData.farmName,
+          logoEmoji: parsed.logoEmoji || defaultData.logoEmoji,
+          logoUrl: parsed.logoUrl || null,
+        };
+      } catch (e) { /* fallback */ }
+    }
+    return defaultData;
   });
 
   useEffect(() => {

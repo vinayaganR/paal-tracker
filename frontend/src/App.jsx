@@ -319,12 +319,25 @@ function MainApp() {
             <form onSubmit={handleSaveSettings} className="space-y-3">
               <div>
                 <label className="text-xs font-bold text-slate-700 block mb-1">
-                  {t('appName')} / {t('farmName')}
+                  {t('brandNameLabel')}
                 </label>
                 <input
                   type="text"
                   required
-                  value={settingsForm.farmName}
+                  value={settingsForm.appName || 'PaalVandi'}
+                  onChange={(e) => setSettingsForm({ ...settingsForm, appName: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">
+                  {t('farmSubtitleLabel')}
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={settingsForm.farmName || 'dheena dhinesh farming'}
                   onChange={(e) => setSettingsForm({ ...settingsForm, farmName: e.target.value })}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold"
                 />

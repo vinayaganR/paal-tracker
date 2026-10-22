@@ -1,13 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
+import BrandLogoModal from './BrandLogoModal';
 import { 
   Sun, 
   Moon, 
   Languages, 
   LogOut, 
   Settings,
-  HelpCircle
+  HelpCircle,
+  Pencil,
+  Camera
 } from 'lucide-react';
 
 export default function Navbar({ 
@@ -20,28 +23,58 @@ export default function Navbar({
 }) {
   const { t, lang, toggleLanguage } = useLanguage();
   const { currentUser, isAdmin, isCustomer, activeCustomer, logout, dairyInfo } = useAuth();
+  const [isBrandModalOpen, setIsBrandModalOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-emerald-100 shadow-sm">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 sm:h-20">
           
-          {/* Brand Logo & Title */}
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-tr from-emerald-600 to-green-400 flex items-center justify-center shadow-md shadow-emerald-200">
-              <span className="text-2xl">🥛</span>
+          {/* Brand Logo & Title with Edit Trigger for Admin */}
+          <div 
+            onClick={isAdmin ? () => setIsBrandModalOpen(true) : undefined}
+            className={`flex items-center space-x-3 group ${isAdmin ? 'cursor-pointer' : ''}`}
+            title={isAdmin ? t('editBrandLogo') : undefined}
+          >
+            {/* Logo Image / Emoji Box with Camera Overlay */}
+            <div className="relative">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-tr from-emerald-600 to-green-400 flex items-center justify-center shadow-md shadow-emerald-200 overflow-hidden">
+                {dairyInfo?.logoUrl ? (
+                  <img 
+                    src={dairyInfo.logoUrl} 
+                    alt="Dairy Logo" 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-2xl">{dairyInfo?.logoEmoji || '🥛'}</span>
+                )}
+              </div>
+
+              {isAdmin && (
+                <div 
+                  className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-slate-900 text-white flex items-center justify-center shadow text-[10px] opacity-90 group-hover:scale-110 group-hover:bg-emerald-600 transition"
+                  title={t('editBrandLogo')}
+                >
+                  <Pencil className="w-2.5 h-2.5" />
+                </div>
+              )}
             </div>
+
+            {/* Brand Title & Farm Name */}
             <div>
               <div className="flex items-center space-x-1.5">
-                <h1 className="font-extrabold text-lg sm:text-xl text-slate-900 tracking-tight flex items-center">
-                  {t('appName')}
+                <h1 className="font-extrabold text-lg sm:text-xl text-slate-900 tracking-tight flex items-center group-hover:text-emerald-700 transition">
+                  {dairyInfo?.appName || t('appName')}
                   <span className="ml-1.5 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800">
                     Live
                   </span>
                 </h1>
+                {isAdmin && (
+                  <Pencil className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition" />
+                )}
               </div>
               <p className="text-xs text-slate-500 font-medium hidden sm:block">
-                {dairyInfo.farmName}
+                {dairyInfo?.farmName || 'dheena dhinesh farming'}
               </p>
             </div>
           </div>
@@ -149,6 +182,14 @@ export default function Navbar({
           </div>
         </div>
       </div>
+
+      {/* Brand & Logo Customization Modal */}
+      {isAdmin && (
+        <BrandLogoModal 
+          isOpen={isBrandModalOpen} 
+          onClose={() => setIsBrandModalOpen(false)} 
+        />
+      )}
     </header>
   );
 }
