@@ -22,36 +22,63 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
   const [activeModalCust, setActiveModalCust] = useState(null);
   const [customExtraQty, setCustomExtraQty] = useState(0.5);
   const [extraInputText, setExtraInputText] = useState('0.5');
+  const [extraUnit, setExtraUnit] = useState('L'); // 'L' | 'ML'
   const [extraRequests, setExtraRequests] = useState([]);
   const [leaveRequests, setLeaveRequests] = useState([]);
   const [isRequestsModalOpen, setIsRequestsModalOpen] = useState(false);
 
   const handleOpenExtraModal = (custItem) => {
     setActiveModalCust(custItem);
+    setExtraUnit('L');
     setCustomExtraQty(0.5);
     setExtraInputText('0.5');
   };
 
-  const handleSelectPreset = (amt) => {
-    setCustomExtraQty(amt);
-    setExtraInputText(String(amt));
+  const handleUnitChange = (newUnit) => {
+    if (newUnit === extraUnit) return;
+    setExtraUnit(newUnit);
+    if (newUnit === 'ML') {
+      const mlVal = Math.round(customExtraQty * 1000);
+      setExtraInputText(mlVal > 0 ? String(mlVal) : '');
+    } else {
+      const lVal = Math.round(customExtraQty * 100) / 100;
+      setExtraInputText(lVal > 0 ? String(lVal) : '');
+    }
+  };
+
+  const handleSelectPreset = (litres, displayVal) => {
+    setCustomExtraQty(litres);
+    setExtraInputText(String(displayVal));
   };
 
   const handleManualExtraChange = (val) => {
     setExtraInputText(val);
     const parsed = parseFloat(val);
     if (!isNaN(parsed) && parsed > 0) {
-      setCustomExtraQty(parsed);
+      if (extraUnit === 'ML') {
+        setCustomExtraQty(parsed / 1000);
+      } else {
+        setCustomExtraQty(parsed);
+      }
     } else {
       setCustomExtraQty(0);
     }
   };
 
-  const handleStepQty = (delta) => {
-    const current = parseFloat(extraInputText) || 0;
-    const nextVal = Math.max(0.1, Math.round((current + delta) * 10) / 10);
-    setCustomExtraQty(nextVal);
-    setExtraInputText(String(nextVal));
+  const handleStepQty = (direction) => {
+    if (extraUnit === 'ML') {
+      const current = parseFloat(extraInputText) || 0;
+      const step = 100;
+      const nextVal = Math.max(50, Math.round((current + direction * step) / 50) * 50);
+      setExtraInputText(String(nextVal));
+      setCustomExtraQty(nextVal / 1000);
+    } else {
+      const current = parseFloat(extraInputText) || 0;
+      const step = 0.5;
+      const nextVal = Math.max(0.1, Math.round((current + direction * step) * 10) / 10);
+      setExtraInputText(String(nextVal));
+      setCustomExtraQty(nextVal);
+    }
   };
 
   const loadData = () => {
@@ -497,24 +524,67 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
               {t('customerLabel')} <strong className="text-slate-900">{activeModalCust.customer.name}</strong> ({t('door')}: {activeModalCust.customer.houseNo})
             </p>
 
-            {/* Extra Milk Presets */}
+            {/* Extra Milk Presets with L / ml Toggle */}
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-700 block">
-                {t('howMuchExtra')}
-              </label>
-              <div className="grid grid-cols-5 gap-1.5">
-                {[0.5, 1.0, 1.5, 2.0, 3.0].map(amt => (
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-700 block">
+                  {t('howMuchExtra')}
+                </label>
+                {/* L / ml Toggle Pills */}
+                <div className="inline-flex rounded-xl bg-slate-100 p-0.5 border border-slate-200">
                   <button
-                    key={amt}
                     type="button"
-                    onClick={() => handleSelectPreset(amt)}
+                    onClick={() => handleUnitChange('L')}
+                    className={`px-2.5 py-0.5 rounded-lg text-xs font-black transition ${
+                      extraUnit === 'L'
+                        ? 'bg-amber-400 text-slate-950 shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    L
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleUnitChange('ML')}
+                    className={`px-2.5 py-0.5 rounded-lg text-xs font-black transition ${
+                      extraUnit === 'ML'
+                        ? 'bg-amber-400 text-slate-950 shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    ml
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-5 gap-1.5">
+                {(extraUnit === 'ML'
+                  ? [
+                      { label: '+250ml', litres: 0.25, val: 250 },
+                      { label: '+500ml', litres: 0.5, val: 500 },
+                      { label: '+600ml', litres: 0.6, val: 600 },
+                      { label: '+750ml', litres: 0.75, val: 750 },
+                      { label: '+1000ml', litres: 1.0, val: 1000 },
+                    ]
+                  : [
+                      { label: '+0.5L', litres: 0.5, val: 0.5 },
+                      { label: '+1L', litres: 1.0, val: 1.0 },
+                      { label: '+1.5L', litres: 1.5, val: 1.5 },
+                      { label: '+2L', litres: 2.0, val: 2.0 },
+                      { label: '+3L', litres: 3.0, val: 3.0 },
+                    ]
+                ).map(item => (
+                  <button
+                    key={item.label}
+                    type="button"
+                    onClick={() => handleSelectPreset(item.litres, item.val)}
                     className={`py-2 rounded-xl text-xs font-black border transition ${
-                      customExtraQty === amt
+                      customExtraQty === item.litres
                         ? 'bg-amber-400 border-amber-500 text-slate-900 shadow-md ring-2 ring-amber-300'
                         : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
                     }`}
                   >
-                    +{amt}L
+                    {item.label}
                   </button>
                 ))}
               </div>
@@ -527,18 +597,18 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
                   {t('orManualExtra')}
                 </label>
                 <span className="text-[10px] text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md font-black border border-amber-200">
-                  ✍️ {lang === 'ta' ? 'நேரடி உள்ளீடு' : 'Manual Entry'}
+                  ✍️ {lang === 'ta' ? 'நேரடி உள்ளீடு' : 'Manual Entry'} ({extraUnit === 'ML' ? 'ml' : 'L'})
                 </span>
               </div>
 
-              {/* Enterprise Segmented Input Group */}
+              {/* Enterprise Segmented Input Group with L / ml Toggle */}
               <div className="flex items-center rounded-2xl border-2 border-slate-200 bg-white shadow-sm overflow-hidden focus-within:border-amber-500 focus-within:ring-2 focus-within:ring-amber-400/20 transition">
                 {/* Step Minus */}
                 <button
                   type="button"
-                  onClick={() => handleStepQty(-0.5)}
+                  onClick={() => handleStepQty(-1)}
                   className="w-11 h-12 bg-slate-50 hover:bg-slate-100 active:bg-slate-200 text-slate-700 font-black text-xl border-r border-slate-200 flex items-center justify-center transition select-none flex-shrink-0"
-                  title="-0.5L"
+                  title={extraUnit === 'ML' ? "-100ml" : "-0.5L"}
                 >
                   −
                 </button>
@@ -546,26 +616,49 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
                 {/* Number Input (browser spinner disabled, clean standard placeholder) */}
                 <input
                   type="number"
-                  step="0.1"
-                  min="0.1"
-                  max="100"
+                  step={extraUnit === 'ML' ? "50" : "0.1"}
+                  min="0"
+                  max={extraUnit === 'ML' ? "50000" : "50"}
                   value={extraInputText}
                   onChange={(e) => handleManualExtraChange(e.target.value)}
-                  placeholder={t('manualLitresPlaceholder')}
-                  className="w-full h-12 text-center font-black text-slate-900 text-lg bg-transparent outline-none px-3 placeholder:text-slate-400 placeholder:text-sm placeholder:font-medium [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  placeholder={extraUnit === 'ML' ? t('placeholderMl') : t('placeholderLitres')}
+                  className="w-full h-12 text-center font-black text-slate-900 text-lg bg-transparent outline-none px-2 placeholder:text-slate-400 placeholder:text-xs sm:placeholder:text-sm placeholder:font-medium [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
 
-                {/* Dedicated Unit Suffix Addon (no overlap) */}
-                <div className="px-3.5 h-12 bg-slate-100/90 border-l border-slate-200 flex items-center justify-center text-xs font-black text-slate-600 select-none flex-shrink-0">
-                  {t('litres')}
+                {/* Interactive L / ml Toggle Addon */}
+                <div className="flex items-center p-1 bg-slate-100/90 border-l border-slate-200 flex-shrink-0">
+                  <div className="inline-flex rounded-xl bg-white p-0.5 border border-slate-200/80 shadow-inner">
+                    <button
+                      type="button"
+                      onClick={() => handleUnitChange('L')}
+                      className={`px-2 py-1 rounded-lg text-xs font-black transition ${
+                        extraUnit === 'L'
+                          ? 'bg-amber-400 text-slate-950 shadow-sm'
+                          : 'text-slate-500 hover:text-slate-900'
+                      }`}
+                    >
+                      L
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleUnitChange('ML')}
+                      className={`px-2 py-1 rounded-lg text-xs font-black transition ${
+                        extraUnit === 'ML'
+                          ? 'bg-amber-400 text-slate-950 shadow-sm'
+                          : 'text-slate-500 hover:text-slate-900'
+                      }`}
+                    >
+                      ml
+                    </button>
+                  </div>
                 </div>
 
                 {/* Step Plus */}
                 <button
                   type="button"
-                  onClick={() => handleStepQty(+0.5)}
+                  onClick={() => handleStepQty(+1)}
                   className="w-11 h-12 bg-slate-50 hover:bg-slate-100 active:bg-slate-200 text-slate-700 font-black text-xl border-l border-slate-200 flex items-center justify-center transition select-none flex-shrink-0"
-                  title="+0.5L"
+                  title={extraUnit === 'ML' ? "+100ml" : "+0.5L"}
                 >
                   +
                 </button>
@@ -593,12 +686,14 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
                   </div>
 
                   {isValid ? (
-                    <div className="flex items-center space-x-1.5 text-[11px] font-semibold text-slate-600 mt-1 border-t border-emerald-200/60 pt-1.5">
+                    <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-semibold text-slate-600 mt-1.5 border-t border-emerald-200/60 pt-1.5">
                       <span>{t('regularMilkShort')}: <strong>{defaultQty}L</strong></span>
                       <span>+</span>
-                      <span className="text-amber-800 font-bold">{t('extraMilkShort')}: <strong>{extraQty}L</strong></span>
+                      <span className="text-amber-800 font-bold">
+                        {t('extraMilkShort')}: <strong>{extraUnit === 'ML' ? `${Math.round(extraQty * 1000)} ml (${extraQty}L)` : `${extraQty}L`}</strong>
+                      </span>
                       <span>=</span>
-                      <strong className="text-emerald-800">{total} {t('litres')}</strong>
+                      <strong className="text-emerald-800 font-black">{total} {t('litres')}</strong>
                     </div>
                   ) : (
                     <p className="text-[11px] font-bold text-rose-600 mt-1">

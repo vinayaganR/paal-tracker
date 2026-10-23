@@ -41,18 +41,55 @@ export default function CustomerPortal() {
   const [extraShift, setExtraShift] = useState('MORNING');
   const [extraLitres, setExtraLitres] = useState(1.0);
   const [extraLitresInput, setExtraLitresInput] = useState('1.0');
+  const [extraUnit, setExtraUnit] = useState('L'); // 'L' | 'ml'
   const [extraReason, setExtraReason] = useState(lang === 'ta' ? 'விருந்தினர் வருகை' : 'Guests visiting');
 
-  const handleSelectCustomerExtraPreset = (amt) => {
-    setExtraLitres(amt);
-    setExtraLitresInput(String(amt));
+  const handleToggleCustomerUnit = (newUnit) => {
+    if (newUnit === extraUnit) return;
+    setExtraUnit(newUnit);
+    const num = parseFloat(extraLitresInput);
+    if (newUnit === 'ml') {
+      if (!isNaN(num) && num > 0) {
+        const mlVal = Math.round(num * 1000);
+        setExtraLitresInput(String(mlVal));
+        setExtraLitres(num);
+      } else {
+        setExtraLitresInput('500');
+        setExtraLitres(0.5);
+      }
+    } else {
+      if (!isNaN(num) && num > 0) {
+        const lVal = Math.round((num / 1000) * 1000) / 1000;
+        setExtraLitresInput(String(lVal));
+        setExtraLitres(lVal);
+      } else {
+        setExtraLitresInput('1.0');
+        setExtraLitres(1.0);
+      }
+    }
+  };
+
+  const handleSelectCustomerExtraPreset = (amt, unit = extraUnit) => {
+    if (unit === 'ml') {
+      setExtraUnit('ml');
+      setExtraLitresInput(String(amt));
+      setExtraLitres(amt / 1000);
+    } else {
+      setExtraUnit('L');
+      setExtraLitresInput(String(amt));
+      setExtraLitres(amt);
+    }
   };
 
   const handleManualCustomerExtraChange = (val) => {
     setExtraLitresInput(val);
     const parsed = parseFloat(val);
     if (!isNaN(parsed) && parsed > 0) {
-      setExtraLitres(parsed);
+      if (extraUnit === 'ml') {
+        setExtraLitres(Math.round((parsed / 1000) * 10000) / 10000);
+      } else {
+        setExtraLitres(parsed);
+      }
     } else {
       setExtraLitres(0);
     }
@@ -60,9 +97,16 @@ export default function CustomerPortal() {
 
   const handleStepCustomerExtra = (delta) => {
     const current = parseFloat(extraLitresInput) || 0;
-    const nextVal = Math.max(0.1, Math.round((current + delta) * 10) / 10);
-    setExtraLitres(nextVal);
-    setExtraLitresInput(String(nextVal));
+    if (extraUnit === 'ml') {
+      const step = delta > 0 ? 100 : -100;
+      const nextVal = Math.max(50, Math.round(current + step));
+      setExtraLitresInput(String(nextVal));
+      setExtraLitres(Math.round((nextVal / 1000) * 10000) / 10000);
+    } else {
+      const nextVal = Math.max(0.1, Math.round((current + delta) * 10) / 10);
+      setExtraLitresInput(String(nextVal));
+      setExtraLitres(nextVal);
+    }
   };
 
   const [toastMessage, setToastMessage] = useState('');
@@ -747,24 +791,71 @@ export default function CustomerPortal() {
                 </div>
               </div>
 
+              {/* Unit Switcher: Litres (L) vs Millilitres (ml) */}
+              <div className="flex items-center justify-between bg-slate-100 p-1 rounded-2xl border border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => handleToggleCustomerUnit('L')}
+                  className={`w-1/2 py-2 rounded-xl text-xs font-black transition flex items-center justify-center space-x-1.5 ${
+                    extraUnit === 'L'
+                      ? 'bg-white text-blue-900 shadow-sm border border-slate-200/80 ring-1 ring-blue-500/20'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <span>🥛 {t('unitLitres')}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleToggleCustomerUnit('ml')}
+                  className={`w-1/2 py-2 rounded-xl text-xs font-black transition flex items-center justify-center space-x-1.5 ${
+                    extraUnit === 'ml'
+                      ? 'bg-white text-amber-900 shadow-sm border border-slate-200/80 ring-1 ring-amber-500/20'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <span>🧪 {t('unitMilliLitres')}</span>
+                </button>
+              </div>
+
               {/* Extra Milk Presets */}
-              <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">
-                  {t('quantityLabel')} ({t('litres')})
-                </label>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-700 block">
+                    {t('howMuchExtra')}
+                  </label>
+                  <span className="text-[10px] font-extrabold text-slate-500">
+                    {extraUnit === 'ml' ? 'Millilitres (ml)' : 'Litres (L)'}
+                  </span>
+                </div>
+
                 <div className="grid grid-cols-5 gap-1.5">
-                  {[0.5, 1.0, 1.5, 2.0, 3.0].map(amt => (
-                    <button
-                      key={amt}
-                      type="button"
-                      onClick={() => handleSelectCustomerExtraPreset(amt)}
-                      className={`py-2 rounded-xl text-xs font-black border transition ${
-                        extraLitres === amt ? 'bg-blue-600 text-white border-blue-700 shadow-sm ring-2 ring-blue-300' : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
-                      }`}
-                    >
-                      +{amt}L
-                    </button>
-                  ))}
+                  {extraUnit === 'ml' ? (
+                    [200, 250, 500, 700, 1000].map(amt => (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => handleSelectCustomerExtraPreset(amt, 'ml')}
+                        className={`py-2 rounded-xl text-xs font-black border transition ${
+                          parseFloat(extraLitresInput) === amt ? 'bg-blue-600 text-white border-blue-700 shadow-sm ring-2 ring-blue-300' : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                        }`}
+                      >
+                        +{amt}ml
+                      </button>
+                    ))
+                  ) : (
+                    [0.5, 1.0, 1.5, 2.0, 3.0].map(amt => (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => handleSelectCustomerExtraPreset(amt, 'L')}
+                        className={`py-2 rounded-xl text-xs font-black border transition ${
+                          parseFloat(extraLitresInput) === amt ? 'bg-blue-600 text-white border-blue-700 shadow-sm ring-2 ring-blue-300' : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                        }`}
+                      >
+                        +{amt}L
+                      </button>
+                    ))
+                  )}
                 </div>
               </div>
 
@@ -785,40 +876,81 @@ export default function CustomerPortal() {
                     type="button"
                     onClick={() => handleStepCustomerExtra(-0.5)}
                     className="w-10 h-11 bg-slate-50 hover:bg-slate-100 active:bg-slate-200 text-slate-700 font-black text-lg border-r border-slate-200 flex items-center justify-center transition select-none flex-shrink-0"
-                    title="-0.5L"
+                    title={extraUnit === 'ml' ? "-100 ml" : "-0.5 L"}
                   >
                     −
                   </button>
 
                   <input
                     type="number"
-                    step="0.1"
-                    min="0.1"
-                    max="100"
+                    step={extraUnit === 'ml' ? "50" : "0.1"}
+                    min={extraUnit === 'ml' ? "50" : "0.1"}
+                    max={extraUnit === 'ml' ? "50000" : "100"}
                     value={extraLitresInput}
                     onChange={(e) => handleManualCustomerExtraChange(e.target.value)}
-                    placeholder={t('manualLitresPlaceholder')}
-                    className="w-full h-11 text-center font-black text-slate-900 text-base bg-transparent outline-none px-3 placeholder:text-slate-400 placeholder:text-sm placeholder:font-medium [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    placeholder={extraUnit === 'ml' ? t('enterMlPlaceholder') : t('manualLitresPlaceholder')}
+                    className="w-full h-11 text-center font-black text-slate-900 text-base bg-transparent outline-none px-3 placeholder:text-slate-400 placeholder:text-xs sm:placeholder:text-sm placeholder:font-medium [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
 
-                  <div className="px-3 h-11 bg-slate-100/90 border-l border-slate-200 flex items-center justify-center text-xs font-black text-slate-600 select-none flex-shrink-0">
-                    {t('litres')}
+                  {/* Interactive L / ml Toggle Addon */}
+                  <div className="flex items-center p-1 bg-slate-100/90 border-l border-slate-200 flex-shrink-0">
+                    <div className="inline-flex rounded-xl bg-white p-0.5 border border-slate-200/80 shadow-inner">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleCustomerUnit('L')}
+                        className={`px-2 py-1 rounded-lg text-xs font-black transition ${
+                          extraUnit === 'L'
+                            ? 'bg-blue-600 text-white shadow-sm'
+                            : 'text-slate-500 hover:text-slate-900'
+                        }`}
+                      >
+                        L
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleCustomerUnit('ml')}
+                        className={`px-2 py-1 rounded-lg text-xs font-black transition ${
+                          extraUnit === 'ml'
+                            ? 'bg-blue-600 text-white shadow-sm'
+                            : 'text-slate-500 hover:text-slate-900'
+                        }`}
+                      >
+                        ml
+                      </button>
+                    </div>
                   </div>
 
                   <button
                     type="button"
                     onClick={() => handleStepCustomerExtra(+0.5)}
                     className="w-10 h-11 bg-slate-50 hover:bg-slate-100 active:bg-slate-200 text-slate-700 font-black text-lg border-l border-slate-200 flex items-center justify-center transition select-none flex-shrink-0"
-                    title="+0.5L"
+                    title={extraUnit === 'ml' ? "+100 ml" : "+0.5 L"}
                   >
                     +
                   </button>
                 </div>
 
-                {extraLitres <= 0 && (
+                {/* Smart Helper if user typed large number in Litres mode like 700 */}
+                {extraUnit === 'L' && parseFloat(extraLitresInput) >= 50 && (
+                  <button
+                    type="button"
+                    onClick={() => handleToggleCustomerUnit('ml')}
+                    className="w-full py-1.5 px-3 rounded-xl bg-amber-100 hover:bg-amber-200 border border-amber-300 text-amber-950 text-xs font-black flex items-center justify-between transition animate-pulse"
+                  >
+                    <span>💡 {extraLitresInput} ml ({(parseFloat(extraLitresInput) / 1000).toFixed(2)} L) {lang === 'ta' ? 'என்று மாற்றவா?' : 'switch to ml?'}</span>
+                    <span className="underline ml-2">{lang === 'ta' ? 'ml-க்கு மாற்று →' : 'Switch to ml →'}</span>
+                  </button>
+                )}
+
+                {extraLitres <= 0 ? (
                   <p className="text-[11px] font-bold text-rose-600">
                     ⚠️ {lang === 'ta' ? 'சரியான அளவை உள்ளிடவும் (0-க்கு மேல்)' : 'Please enter a valid amount (> 0)'}
                   </p>
+                ) : (
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                    <span>{lang === 'ta' ? 'கோரப்படும் கூடுதல் அளவு:' : 'Requested Extra:'} <strong className="text-blue-900">{extraUnit === 'ml' ? `${extraLitresInput} ml (${extraLitres}L)` : `${extraLitres}L`}</strong></span>
+                    <span className="text-emerald-700 font-black">~₹{Math.round(extraLitres * (activeCustomer?.ratePerLitre || 56))}</span>
+                  </div>
                 )}
               </div>
 
