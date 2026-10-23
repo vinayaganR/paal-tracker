@@ -531,39 +531,40 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
                 </span>
               </div>
 
-              <div className="relative flex items-center">
+              {/* Enterprise Segmented Input Group */}
+              <div className="flex items-center rounded-2xl border-2 border-slate-200 bg-white shadow-sm overflow-hidden focus-within:border-amber-500 focus-within:ring-2 focus-within:ring-amber-400/20 transition">
                 {/* Step Minus */}
                 <button
                   type="button"
                   onClick={() => handleStepQty(-0.5)}
-                  className="w-10 h-11 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 rounded-l-2xl font-black text-lg border border-r-0 border-slate-300 flex items-center justify-center transition"
+                  className="w-11 h-12 bg-slate-50 hover:bg-slate-100 active:bg-slate-200 text-slate-700 font-black text-xl border-r border-slate-200 flex items-center justify-center transition select-none flex-shrink-0"
                   title="-0.5L"
                 >
                   −
                 </button>
 
-                {/* Number Input */}
-                <div className="relative flex-1">
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="0.1"
-                    max="100"
-                    value={extraInputText}
-                    onChange={(e) => handleManualExtraChange(e.target.value)}
-                    placeholder={t('manualLitresPlaceholder')}
-                    className="w-full h-11 bg-slate-50 focus:bg-white text-center font-black text-slate-900 text-lg border-y border-slate-300 focus:border-amber-500 focus:ring-2 focus:ring-amber-400/20 outline-none transition px-2"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400 pointer-events-none">
-                    {t('litres')}
-                  </span>
+                {/* Number Input (browser spinner disabled, clean standard placeholder) */}
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0.1"
+                  max="100"
+                  value={extraInputText}
+                  onChange={(e) => handleManualExtraChange(e.target.value)}
+                  placeholder={t('manualLitresPlaceholder')}
+                  className="w-full h-12 text-center font-black text-slate-900 text-lg bg-transparent outline-none px-3 placeholder:text-slate-400 placeholder:text-sm placeholder:font-medium [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                />
+
+                {/* Dedicated Unit Suffix Addon (no overlap) */}
+                <div className="px-3.5 h-12 bg-slate-100/90 border-l border-slate-200 flex items-center justify-center text-xs font-black text-slate-600 select-none flex-shrink-0">
+                  {t('litres')}
                 </div>
 
                 {/* Step Plus */}
                 <button
                   type="button"
                   onClick={() => handleStepQty(+0.5)}
-                  className="w-10 h-11 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 rounded-r-2xl font-black text-lg border border-l-0 border-slate-300 flex items-center justify-center transition"
+                  className="w-11 h-12 bg-slate-50 hover:bg-slate-100 active:bg-slate-200 text-slate-700 font-black text-xl border-l border-slate-200 flex items-center justify-center transition select-none flex-shrink-0"
                   title="+0.5L"
                 >
                   +

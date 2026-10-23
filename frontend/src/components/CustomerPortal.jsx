@@ -779,36 +779,36 @@ export default function CustomerPortal() {
                   </span>
                 </div>
 
-                <div className="relative flex items-center">
+                {/* Enterprise Segmented Input Group */}
+                <div className="flex items-center rounded-2xl border-2 border-slate-200 bg-white shadow-sm overflow-hidden focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-400/20 transition">
                   <button
                     type="button"
                     onClick={() => handleStepCustomerExtra(-0.5)}
-                    className="w-10 h-10 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 rounded-l-2xl font-black text-lg border border-r-0 border-slate-300 flex items-center justify-center transition"
+                    className="w-10 h-11 bg-slate-50 hover:bg-slate-100 active:bg-slate-200 text-slate-700 font-black text-lg border-r border-slate-200 flex items-center justify-center transition select-none flex-shrink-0"
                     title="-0.5L"
                   >
                     −
                   </button>
 
-                  <div className="relative flex-1">
-                    <input
-                      type="number"
-                      step="0.1"
-                      min="0.1"
-                      max="100"
-                      value={extraLitresInput}
-                      onChange={(e) => handleManualCustomerExtraChange(e.target.value)}
-                      placeholder={t('manualLitresPlaceholder')}
-                      className="w-full h-10 bg-slate-50 focus:bg-white text-center font-black text-slate-900 text-base border-y border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-400/20 outline-none transition px-2"
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400 pointer-events-none">
-                      {t('litres')}
-                    </span>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0.1"
+                    max="100"
+                    value={extraLitresInput}
+                    onChange={(e) => handleManualCustomerExtraChange(e.target.value)}
+                    placeholder={t('manualLitresPlaceholder')}
+                    className="w-full h-11 text-center font-black text-slate-900 text-base bg-transparent outline-none px-3 placeholder:text-slate-400 placeholder:text-sm placeholder:font-medium [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+
+                  <div className="px-3 h-11 bg-slate-100/90 border-l border-slate-200 flex items-center justify-center text-xs font-black text-slate-600 select-none flex-shrink-0">
+                    {t('litres')}
                   </div>
 
                   <button
                     type="button"
                     onClick={() => handleStepCustomerExtra(+0.5)}
-                    className="w-10 h-10 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 rounded-r-2xl font-black text-lg border border-l-0 border-slate-300 flex items-center justify-center transition"
+                    className="w-10 h-11 bg-slate-50 hover:bg-slate-100 active:bg-slate-200 text-slate-700 font-black text-lg border-l border-slate-200 flex items-center justify-center transition select-none flex-shrink-0"
                     title="+0.5L"
                   >
                     +
