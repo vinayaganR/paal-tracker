@@ -21,9 +21,38 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
   const [search, setSearch] = useState('');
   const [activeModalCust, setActiveModalCust] = useState(null);
   const [customExtraQty, setCustomExtraQty] = useState(0.5);
+  const [extraInputText, setExtraInputText] = useState('0.5');
   const [extraRequests, setExtraRequests] = useState([]);
   const [leaveRequests, setLeaveRequests] = useState([]);
   const [isRequestsModalOpen, setIsRequestsModalOpen] = useState(false);
+
+  const handleOpenExtraModal = (custItem) => {
+    setActiveModalCust(custItem);
+    setCustomExtraQty(0.5);
+    setExtraInputText('0.5');
+  };
+
+  const handleSelectPreset = (amt) => {
+    setCustomExtraQty(amt);
+    setExtraInputText(String(amt));
+  };
+
+  const handleManualExtraChange = (val) => {
+    setExtraInputText(val);
+    const parsed = parseFloat(val);
+    if (!isNaN(parsed) && parsed > 0) {
+      setCustomExtraQty(parsed);
+    } else {
+      setCustomExtraQty(0);
+    }
+  };
+
+  const handleStepQty = (delta) => {
+    const current = parseFloat(extraInputText) || 0;
+    const nextVal = Math.max(0.1, Math.round((current + delta) * 10) / 10);
+    setCustomExtraQty(nextVal);
+    setExtraInputText(String(nextVal));
+  };
 
   const loadData = () => {
     const data = dairyService.getDailyDeliverySheet(selectedDate, selectedShift);
@@ -393,7 +422,7 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
                         {/* Extra Milk Button */}
                         <button
                           id={idx === 0 ? "tour-extra-milk" : undefined}
-                          onClick={() => setActiveModalCust(item)}
+                          onClick={() => handleOpenExtraModal(item)}
                           className="p-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 font-extrabold text-xs border border-amber-200 transition"
                           title={t('addExtraMilk')}
                         >
@@ -468,49 +497,141 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
               {t('customerLabel')} <strong className="text-slate-900">{activeModalCust.customer.name}</strong> ({t('door')}: {activeModalCust.customer.houseNo})
             </p>
 
+            {/* Extra Milk Presets */}
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-700 block">
                 {t('howMuchExtra')}
               </label>
-              <div className="grid grid-cols-4 gap-2">
-                {[0.5, 1.0, 1.5, 2.0].map(amt => (
+              <div className="grid grid-cols-5 gap-1.5">
+                {[0.5, 1.0, 1.5, 2.0, 3.0].map(amt => (
                   <button
                     key={amt}
                     type="button"
-                    onClick={() => setCustomExtraQty(amt)}
+                    onClick={() => handleSelectPreset(amt)}
                     className={`py-2 rounded-xl text-xs font-black border transition ${
                       customExtraQty === amt
-                        ? 'bg-amber-400 border-amber-500 text-slate-900 shadow'
-                        : 'bg-slate-50 border-slate-200 text-slate-700'
+                        ? 'bg-amber-400 border-amber-500 text-slate-900 shadow-md ring-2 ring-amber-300'
+                        : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
                     }`}
                   >
-                    +{amt} L
+                    +{amt}L
                   </button>
                 ))}
               </div>
             </div>
 
-            <div className="bg-emerald-50 rounded-2xl p-3 border border-emerald-200 text-xs text-emerald-900">
-              {t('totalMilk')} <strong>{(activeModalCust.defaultQty || 0) + customExtraQty} {t('litres')}</strong>
+            {/* Manual Custom Input Box */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-bold text-slate-600 block">
+                  {t('orManualExtra')}
+                </label>
+                <span className="text-[10px] text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md font-black border border-amber-200">
+                  ✍️ {lang === 'ta' ? 'நேரடி உள்ளீடு' : 'Manual Entry'}
+                </span>
+              </div>
+
+              <div className="relative flex items-center">
+                {/* Step Minus */}
+                <button
+                  type="button"
+                  onClick={() => handleStepQty(-0.5)}
+                  className="w-10 h-11 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 rounded-l-2xl font-black text-lg border border-r-0 border-slate-300 flex items-center justify-center transition"
+                  title="-0.5L"
+                >
+                  −
+                </button>
+
+                {/* Number Input */}
+                <div className="relative flex-1">
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0.1"
+                    max="100"
+                    value={extraInputText}
+                    onChange={(e) => handleManualExtraChange(e.target.value)}
+                    placeholder={t('manualLitresPlaceholder')}
+                    className="w-full h-11 bg-slate-50 focus:bg-white text-center font-black text-slate-900 text-lg border-y border-slate-300 focus:border-amber-500 focus:ring-2 focus:ring-amber-400/20 outline-none transition px-2"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400 pointer-events-none">
+                    {t('litres')}
+                  </span>
+                </div>
+
+                {/* Step Plus */}
+                <button
+                  type="button"
+                  onClick={() => handleStepQty(+0.5)}
+                  className="w-10 h-11 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 rounded-r-2xl font-black text-lg border border-l-0 border-slate-300 flex items-center justify-center transition"
+                  title="+0.5L"
+                >
+                  +
+                </button>
+              </div>
             </div>
+
+            {/* Total Calculation Display */}
+            {(() => {
+              const defaultQty = activeModalCust.defaultQty || 0;
+              const extraQty = customExtraQty > 0 ? customExtraQty : 0;
+              const total = Math.round((defaultQty + extraQty) * 100) / 100;
+              const isValid = customExtraQty > 0;
+
+              return (
+                <div className={`rounded-2xl p-3 border transition ${
+                  isValid 
+                    ? 'bg-emerald-50 border-emerald-300 text-emerald-950' 
+                    : 'bg-rose-50 border-rose-300 text-rose-800'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-700">{t('totalMilk')}</span>
+                    <span className="text-lg font-black text-emerald-800">
+                      {isValid ? `${total} ${t('litres')}` : '0 L'}
+                    </span>
+                  </div>
+
+                  {isValid ? (
+                    <div className="flex items-center space-x-1.5 text-[11px] font-semibold text-slate-600 mt-1 border-t border-emerald-200/60 pt-1.5">
+                      <span>{t('regularMilkShort')}: <strong>{defaultQty}L</strong></span>
+                      <span>+</span>
+                      <span className="text-amber-800 font-bold">{t('extraMilkShort')}: <strong>{extraQty}L</strong></span>
+                      <span>=</span>
+                      <strong className="text-emerald-800">{total} {t('litres')}</strong>
+                    </div>
+                  ) : (
+                    <p className="text-[11px] font-bold text-rose-600 mt-1">
+                      ⚠️ {lang === 'ta' ? 'சரியான அளவை உள்ளிடவும் (0-க்கு மேல்)' : 'Please enter a valid amount (> 0)'}
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
 
             <div className="flex items-center space-x-2 pt-2">
               <button
                 type="button"
                 onClick={() => setActiveModalCust(null)}
-                className="w-1/2 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-100"
+                className="w-1/2 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-100 transition"
               >
                 {t('cancel')}
               </button>
               <button
                 type="button"
+                disabled={!(customExtraQty > 0)}
                 onClick={() => {
-                  handleMarkDelivered(activeModalCust, customExtraQty);
-                  setActiveModalCust(null);
+                  if (customExtraQty > 0) {
+                    handleMarkDelivered(activeModalCust, customExtraQty);
+                    setActiveModalCust(null);
+                  }
                 }}
-                className="w-1/2 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-200"
+                className={`w-1/2 py-2.5 rounded-xl text-white text-xs font-black shadow-md transition flex items-center justify-center space-x-1 ${
+                  customExtraQty > 0
+                    ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200 active:scale-98 cursor-pointer'
+                    : 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
+                }`}
               >
-                {t('confirmBtn')}
+                <span>{t('confirmBtn')}</span>
               </button>
             </div>
           </div>

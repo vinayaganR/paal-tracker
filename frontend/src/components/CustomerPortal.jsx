@@ -40,7 +40,30 @@ export default function CustomerPortal() {
   const [extraDate, setExtraDate] = useState(tomorrowStr);
   const [extraShift, setExtraShift] = useState('MORNING');
   const [extraLitres, setExtraLitres] = useState(1.0);
+  const [extraLitresInput, setExtraLitresInput] = useState('1.0');
   const [extraReason, setExtraReason] = useState(lang === 'ta' ? 'விருந்தினர் வருகை' : 'Guests visiting');
+
+  const handleSelectCustomerExtraPreset = (amt) => {
+    setExtraLitres(amt);
+    setExtraLitresInput(String(amt));
+  };
+
+  const handleManualCustomerExtraChange = (val) => {
+    setExtraLitresInput(val);
+    const parsed = parseFloat(val);
+    if (!isNaN(parsed) && parsed > 0) {
+      setExtraLitres(parsed);
+    } else {
+      setExtraLitres(0);
+    }
+  };
+
+  const handleStepCustomerExtra = (delta) => {
+    const current = parseFloat(extraLitresInput) || 0;
+    const nextVal = Math.max(0.1, Math.round((current + delta) * 10) / 10);
+    setExtraLitres(nextVal);
+    setExtraLitresInput(String(nextVal));
+  };
 
   const [toastMessage, setToastMessage] = useState('');
 
@@ -724,24 +747,79 @@ export default function CustomerPortal() {
                 </div>
               </div>
 
+              {/* Extra Milk Presets */}
               <div>
                 <label className="text-xs font-bold text-slate-700 block mb-1">
                   {t('quantityLabel')} ({t('litres')})
                 </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {[0.5, 1.0, 2.0].map(amt => (
+                <div className="grid grid-cols-5 gap-1.5">
+                  {[0.5, 1.0, 1.5, 2.0, 3.0].map(amt => (
                     <button
                       key={amt}
                       type="button"
-                      onClick={() => setExtraLitres(amt)}
-                      className={`py-2 rounded-xl text-xs font-black border ${
-                        extraLitres === amt ? 'bg-blue-600 text-white border-blue-700' : 'bg-slate-50 border-slate-200'
+                      onClick={() => handleSelectCustomerExtraPreset(amt)}
+                      className={`py-2 rounded-xl text-xs font-black border transition ${
+                        extraLitres === amt ? 'bg-blue-600 text-white border-blue-700 shadow-sm ring-2 ring-blue-300' : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
                       }`}
                     >
-                      +{amt} L
+                      +{amt}L
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* Manual Input Box */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-bold text-slate-600 block">
+                    {t('orManualExtra')}
+                  </label>
+                  <span className="text-[10px] text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md font-black border border-blue-200">
+                    ✍️ {lang === 'ta' ? 'நேரடி உள்ளீடு' : 'Manual Entry'}
+                  </span>
+                </div>
+
+                <div className="relative flex items-center">
+                  <button
+                    type="button"
+                    onClick={() => handleStepCustomerExtra(-0.5)}
+                    className="w-10 h-10 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 rounded-l-2xl font-black text-lg border border-r-0 border-slate-300 flex items-center justify-center transition"
+                    title="-0.5L"
+                  >
+                    −
+                  </button>
+
+                  <div className="relative flex-1">
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0.1"
+                      max="100"
+                      value={extraLitresInput}
+                      onChange={(e) => handleManualCustomerExtraChange(e.target.value)}
+                      placeholder={t('manualLitresPlaceholder')}
+                      className="w-full h-10 bg-slate-50 focus:bg-white text-center font-black text-slate-900 text-base border-y border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-400/20 outline-none transition px-2"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400 pointer-events-none">
+                      {t('litres')}
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleStepCustomerExtra(+0.5)}
+                    className="w-10 h-10 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 rounded-r-2xl font-black text-lg border border-l-0 border-slate-300 flex items-center justify-center transition"
+                    title="+0.5L"
+                  >
+                    +
+                  </button>
+                </div>
+
+                {extraLitres <= 0 && (
+                  <p className="text-[11px] font-bold text-rose-600">
+                    ⚠️ {lang === 'ta' ? 'சரியான அளவை உள்ளிடவும் (0-க்கு மேல்)' : 'Please enter a valid amount (> 0)'}
+                  </p>
+                )}
               </div>
 
               <div className="flex items-center space-x-2 pt-2">
@@ -754,7 +832,12 @@ export default function CustomerPortal() {
                 </button>
                 <button
                   type="submit"
-                  className="w-1/2 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow"
+                  disabled={!(extraLitres > 0)}
+                  className={`w-1/2 py-2.5 rounded-xl text-white text-xs font-black shadow transition ${
+                    extraLitres > 0
+                      ? 'bg-blue-600 hover:bg-blue-700 active:scale-98 cursor-pointer'
+                      : 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
+                  }`}
                 >
                   {t('sendRequestBtn')}
                 </button>
