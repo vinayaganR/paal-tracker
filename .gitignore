@@ -6,3 +6,14 @@ bin/
 sources.txt
 .DS_Store
 .env.local
+
+# Android & Gradle Build Artifacts
+**/android/.gradle/
+**/android/build/
+**/android/app/build/
+**/android/.idea/
+**/android/*.iml
+**/android/app/*.iml
+**/android/local.properties
+**/android/captures/
+**/android/.cxx/

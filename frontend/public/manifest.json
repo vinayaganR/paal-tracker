@@ -1,0 +1,32 @@
+{
+  "name": "PaalVandi - Pure Farm Milk Delivery",
+  "short_name": "PaalVandi",
+  "description": "Daily Farm Fresh Milk Delivery Route Tracking, Billing & Leave Management",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#064e3b",
+  "theme_color": "#047857",
+  "categories": ["business", "productivity", "food"],
+  "icons": [
+    {
+      "src": "/pwa-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

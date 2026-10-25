@@ -12,8 +12,10 @@ import {
   Languages, 
   ArrowRight,
   Sparkles,
-  Info
+  Info,
+  Download
 } from 'lucide-react';
+import InstallAppBanner from './InstallAppBanner';
 
 export default function LoginPage() {
   const { t, lang, toggleLanguage } = useLanguage();
@@ -260,10 +262,42 @@ export default function LoginPage() {
 
       </div>
 
+      {/* Mobile App APK Download Card for Customers & Delivery */}
+      <div className="max-w-md mx-auto mt-5 bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 text-white rounded-3xl p-4 sm:p-5 border border-emerald-500/30 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-3.5">
+        <div className="flex items-center space-x-3 text-left w-full sm:w-auto">
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-emerald-600 to-green-400 p-1 flex items-center justify-center flex-shrink-0 shadow-md">
+            <img src="/cow-transparent.png" alt="PaalVandi" className="w-8 h-8 object-contain" />
+          </div>
+          <div>
+            <div className="flex items-center space-x-1.5">
+              <span className="font-black text-sm text-white">PaalVandi Android App</span>
+              <span className="px-1.5 py-0.2 rounded-md bg-emerald-500/20 text-emerald-300 text-[10px] font-black uppercase">
+                Alpha APK
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-300 font-medium">
+              {lang === 'ta' ? 'வாடிக்கையாளர் & டெலிவரி மொபைல் ஆப்' : 'Customer & Delivery Mobile App'}
+            </p>
+          </div>
+        </div>
+
+        <a
+          href="/PaalVandi.apk"
+          download="PaalVandi.apk"
+          className="w-full sm:w-auto flex items-center justify-center space-x-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-green-400 hover:from-emerald-400 hover:to-green-300 text-slate-950 font-black text-xs shadow-lg shadow-emerald-500/20 active:scale-95 transition"
+        >
+          <Download className="w-4 h-4" />
+          <span>{lang === 'ta' ? 'APK பதிவிறக்கு' : 'Download APK'}</span>
+        </a>
+      </div>
+
       {/* Footer info */}
       <div className="text-center text-xs text-slate-500 max-w-md mx-auto pt-4">
         {dairyInfo.farmName} • {dairyInfo.address}
       </div>
+
+      {/* Floating PWA Mobile App Install Prompt */}
+      <InstallAppBanner />
 
     </div>
   );

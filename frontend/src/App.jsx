@@ -10,6 +10,7 @@ import BillingLedger from './components/BillingLedger';
 import CustomerPortal from './components/CustomerPortal';
 import MilkYieldTracker from './components/MilkYieldTracker';
 import InteractiveTour from './components/InteractiveTour';
+import InstallAppBanner from './components/InstallAppBanner';
 import { 
   Bike, 
   Users, 
@@ -451,6 +452,9 @@ function MainApp() {
           </div>
         </div>
       )}
+
+      {/* Floating PWA Mobile App Install Banner */}
+      <InstallAppBanner />
 
     </div>
   );
