@@ -7,9 +7,15 @@ import {
   Share2, 
   QrCode, 
   Calendar, 
-  CreditCard
+  CreditCard,
+  FileText,
+  Download,
+  Building2,
+  Eye
 } from 'lucide-react';
 import UPIPaymentModal from './UPIPaymentModal';
+import FarmReportModal from './FarmReportModal';
+import CustomerBillModal from './CustomerBillModal';
 
 export default function BillingLedger() {
   const { t, lang } = useLanguage();
@@ -22,6 +28,8 @@ export default function BillingLedger() {
   const [qrModalItem, setQrModalItem] = useState(null);
   const [paymentInputItem, setPaymentInputItem] = useState(null);
   const [payAmount, setPayAmount] = useState('');
+  const [showFarmReportModal, setShowFarmReportModal] = useState(false);
+  const [activeCustBill, setActiveCustBill] = useState(null);
 
   const loadLedger = () => {
     const data = dairyService.getMonthLedger(selectedMonth);
@@ -105,15 +113,26 @@ Thank you!`;
             </p>
           </div>
 
-          {/* Month Picker */}
-          <div className="flex items-center space-x-2 bg-slate-800/90 border border-slate-700 px-3 py-2 rounded-2xl">
-            <Calendar className="w-4 h-4 text-emerald-400" />
-            <input
-              type="month"
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="bg-transparent text-sm font-bold text-white outline-none cursor-pointer"
-            />
+          {/* Master Farm Report & Month Picker */}
+          <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-auto">
+            <button
+              onClick={() => setShowFarmReportModal(true)}
+              className="flex items-center space-x-2 px-3.5 py-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-400 hover:to-green-400 text-slate-950 font-black text-xs sm:text-sm shadow-lg shadow-emerald-900/30 transition active:scale-95 cursor-pointer"
+            >
+              <FileText className="w-4 h-4" />
+              <span>{t('masterFarmReport')}</span>
+            </button>
+
+            {/* Month Picker */}
+            <div className="flex items-center space-x-2 bg-slate-800/90 border border-slate-700 px-3 py-2 rounded-2xl">
+              <Calendar className="w-4 h-4 text-emerald-400" />
+              <input
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="bg-transparent text-sm font-bold text-white outline-none cursor-pointer"
+              />
+            </div>
           </div>
         </div>
 
@@ -202,6 +221,16 @@ Thank you!`;
                       </span>
                     )}
                   </div>
+
+                  {/* View Individual Bill & Report Button */}
+                  <button
+                    onClick={() => setActiveCustBill(item.customer)}
+                    className="flex items-center space-x-1 px-3 py-2 rounded-xl bg-slate-100 hover:bg-emerald-50 text-slate-800 hover:text-emerald-800 border border-slate-200 text-xs font-bold transition shadow-sm"
+                    title={t('viewCustomerBill')}
+                  >
+                    <FileText className="w-3.5 h-3.5 text-emerald-700" />
+                    <span>{t('viewCustomerBill')}</span>
+                  </button>
 
                   {/* WhatsApp Invoicing Button */}
                   <button
@@ -312,6 +341,27 @@ Thank you!`;
             </form>
           </div>
         </div>
+      )}
+
+      {/* Farm Master Report Modal */}
+      <FarmReportModal
+        isOpen={showFarmReportModal}
+        onClose={() => setShowFarmReportModal(false)}
+        selectedMonth={selectedMonth}
+        setSelectedMonth={setSelectedMonth}
+        ledgerData={ledgerData}
+        dairyInfo={dairyInfo}
+      />
+
+      {/* Individual Customer Bill & Report Modal */}
+      {activeCustBill && (
+        <CustomerBillModal
+          isOpen={true}
+          onClose={() => setActiveCustBill(null)}
+          customer={activeCustBill}
+          defaultMonth={selectedMonth}
+          dairyInfo={dairyInfo}
+        />
       )}
 
     </div>

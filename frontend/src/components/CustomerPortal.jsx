@@ -12,9 +12,12 @@ import {
   Clock,
   CheckCircle2,
   XCircle,
-  Bell
+  Bell,
+  FileText,
+  Download
 } from 'lucide-react';
 import UPIPaymentModal from './UPIPaymentModal';
+import CustomerBillModal from './CustomerBillModal';
 
 export default function CustomerPortal() {
   const { t, lang } = useLanguage();
@@ -28,6 +31,7 @@ export default function CustomerPortal() {
   const [showVacationModal, setShowVacationModal] = useState(false);
   const [showExtraModal, setShowExtraModal] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
+  const [showBillModal, setShowBillModal] = useState(false);
 
   // Vacation form state
   const tomorrowStr = new Date(Date.now() + 86400000).toISOString().split('T')[0];
@@ -295,14 +299,14 @@ export default function CustomerPortal() {
         </div>
       </div>
 
-      {/* Customer Quick Actions: Pause / Extra Milk */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* Customer Quick Actions: Pause / Extra Milk / Generate Bill & Report */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
         <button
           id="tour-customer-pause"
           onClick={() => setShowVacationModal(true)}
           className="flex items-center justify-center space-x-2 p-3.5 rounded-2xl bg-white border border-slate-200 shadow-sm hover:border-blue-500 hover:shadow-md transition text-slate-800"
         >
-          <PauseCircle className="w-5 h-5 text-amber-600" />
+          <PauseCircle className="w-5 h-5 text-amber-600 flex-shrink-0" />
           <div className="text-left">
             <span className="text-xs font-extrabold block">{t('pauseDelivery')}</span>
             <span className="text-[10px] text-slate-500">{t('pauseMilkDesc')}</span>
@@ -314,10 +318,21 @@ export default function CustomerPortal() {
           onClick={() => setShowExtraModal(true)}
           className="flex items-center justify-center space-x-2 p-3.5 rounded-2xl bg-white border border-slate-200 shadow-sm hover:border-blue-500 hover:shadow-md transition text-slate-800"
         >
-          <PlusCircle className="w-5 h-5 text-blue-600" />
+          <PlusCircle className="w-5 h-5 text-blue-600 flex-shrink-0" />
           <div className="text-left">
             <span className="text-xs font-extrabold block">{t('requestExtra')}</span>
             <span className="text-[10px] text-slate-500">{t('extraMilkDesc')}</span>
+          </div>
+        </button>
+
+        <button
+          onClick={() => setShowBillModal(true)}
+          className="flex items-center justify-center space-x-2.5 p-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-green-600 text-white shadow-md shadow-emerald-200 hover:shadow-lg transition active:scale-98"
+        >
+          <FileText className="w-5 h-5 text-emerald-100 flex-shrink-0" />
+          <div className="text-left">
+            <span className="text-xs font-black block">{t('generateReport')}</span>
+            <span className="text-[10px] text-emerald-100 block opacity-95">{t('downloadPdf')}</span>
           </div>
         </button>
       </div>
@@ -527,7 +542,7 @@ export default function CustomerPortal() {
         id="tour-customer-passbook"
         className="bg-white rounded-3xl border border-slate-200 p-5 shadow-sm space-y-4"
       >
-        <div className="flex items-center justify-between border-b pb-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b pb-3">
           <div className="flex items-center space-x-2">
             <CalendarIcon className="w-5 h-5 text-blue-600" />
             <h3 className="font-extrabold text-slate-900 text-base">
@@ -535,12 +550,21 @@ export default function CustomerPortal() {
             </h3>
           </div>
 
-          <input
-            type="month"
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-            className="text-xs font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-xl outline-none"
-          />
+          <div className="flex items-center space-x-2 self-end sm:self-auto">
+            <button
+              onClick={() => setShowBillModal(true)}
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-sm transition active:scale-95"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>{t('downloadPdf')}</span>
+            </button>
+            <input
+              type="month"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="text-xs font-bold text-slate-700 bg-slate-100 px-2.5 py-1.5 rounded-xl outline-none cursor-pointer"
+            />
+          </div>
         </div>
 
         {/* Monthly Summary Pills */}
@@ -989,6 +1013,15 @@ export default function CustomerPortal() {
           onClose={() => setShowQrModal(false)}
         />
       )}
+
+      {/* Customer Bill & Delivery Report Modal */}
+      <CustomerBillModal
+        isOpen={showBillModal}
+        onClose={() => setShowBillModal(false)}
+        customer={activeCustomer}
+        defaultMonth={selectedMonth}
+        dairyInfo={dairyInfo}
+      />
 
     </div>
   );
