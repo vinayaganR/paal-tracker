@@ -546,7 +546,7 @@ export default function LoginPage() {
                   <input
                     type="text"
                     required
-                    placeholder="எ.கா: ராஜா (Raja)"
+                    placeholder={lang === 'ta' ? 'வாடிக்கையாளர் முழு பெயர் உள்ளிடவும்' : 'Enter customer full name'}
                     value={regForm.name}
                     onChange={(e) => setRegForm({ ...regForm, name: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -562,7 +562,7 @@ export default function LoginPage() {
                     type="tel"
                     required
                     maxLength={10}
-                    placeholder="9876543210"
+                    placeholder={lang === 'ta' ? '10 இலக்க மொபைல் எண் உள்ளிடவும்' : 'Enter 10-digit mobile number'}
                     value={regForm.phone}
                     onChange={(e) => setRegForm({ ...regForm, phone: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -578,7 +578,7 @@ export default function LoginPage() {
                     <input
                       type="text"
                       required
-                      placeholder="எ.கா: 12/B"
+                      placeholder={lang === 'ta' ? 'கதவு எண் உள்ளிடவும்' : 'Enter house / door no'}
                       value={regForm.houseNo}
                       onChange={(e) => setRegForm({ ...regForm, houseNo: e.target.value })}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -590,7 +590,7 @@ export default function LoginPage() {
                     </label>
                     <input
                       type="text"
-                      placeholder="தெரு பெயர்"
+                      placeholder={lang === 'ta' ? 'தெரு அல்லது பகுதி பெயர் உள்ளிடவும்' : 'Enter street or area'}
                       value={regForm.street}
                       onChange={(e) => setRegForm({ ...regForm, street: e.target.value })}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"

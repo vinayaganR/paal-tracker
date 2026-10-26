@@ -279,7 +279,7 @@ export default function BrandLogoModal({ isOpen, onClose }) {
                   required
                   value={appName}
                   onChange={(e) => setAppName(e.target.value)}
-                  placeholder="e.g. PaalVandi"
+                  placeholder={lang === 'ta' ? 'ஆப் பெயர் உள்ளிடவும்' : 'Enter app name'}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-extrabold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
@@ -293,7 +293,7 @@ export default function BrandLogoModal({ isOpen, onClose }) {
                   required
                   value={farmName}
                   onChange={(e) => setFarmName(e.target.value)}
-                  placeholder="e.g. dheena dhinesh farming"
+                  placeholder={lang === 'ta' ? 'பண்ணை பெயர் உள்ளிடவும்' : 'Enter dairy farm name'}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>

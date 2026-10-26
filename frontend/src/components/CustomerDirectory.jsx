@@ -272,7 +272,7 @@ export default function CustomerDirectory() {
                     required
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="e.g. Muthusamy"
+                    placeholder={lang === 'ta' ? 'வாடிக்கையாளர் பெயர் உள்ளிடவும்' : 'Enter customer name'}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
@@ -286,7 +286,7 @@ export default function CustomerDirectory() {
                     required
                     value={formData.houseNo}
                     onChange={(e) => setFormData({ ...formData, houseNo: e.target.value })}
-                    placeholder="e.g. 14/A"
+                    placeholder={lang === 'ta' ? 'கதவு எண் உள்ளிடவும்' : 'Enter house / door no'}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
@@ -301,7 +301,7 @@ export default function CustomerDirectory() {
                     type="text"
                     value={formData.street}
                     onChange={(e) => setFormData({ ...formData, street: e.target.value })}
-                    placeholder="e.g. Bharathiyar St"
+                    placeholder={lang === 'ta' ? 'தெரு அல்லது பகுதி பெயர் உள்ளிடவும்' : 'Enter street or area'}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
@@ -314,7 +314,7 @@ export default function CustomerDirectory() {
                     type="tel"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    placeholder="9840112345"
+                    placeholder={lang === 'ta' ? '10 இலக்க மொபைல் எண் உள்ளிடவும்' : 'Enter 10-digit mobile number'}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
@@ -382,7 +382,7 @@ export default function CustomerDirectory() {
                     type="text"
                     value={formData.notes}
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    placeholder="e.g. Leave can at gate"
+                    placeholder={lang === 'ta' ? 'டெலிவரி குறிப்புகள் உள்ளிடவும் (விருப்பத்தேர்வு)' : 'Enter delivery instructions (optional)'}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold"
                   />
                 </div>

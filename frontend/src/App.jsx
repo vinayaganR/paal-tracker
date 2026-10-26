@@ -436,7 +436,7 @@ function MainApp() {
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. https://paal-tracker.vercel.app"
+                  placeholder="https://paal-tracker-frontend-seven.vercel.app"
                   value={settingsForm.serverUrl || localStorage.getItem('paal_vandi_server_url') || ''}
                   onChange={(e) => {
                     setSettingsForm({ ...settingsForm, serverUrl: e.target.value });
