@@ -36,6 +36,8 @@ public class MilkDeliveryServer {
         new Customer("cust_5", "கார்த்திக் இன்ஜினியர் (Karthik)", "108", "நேரு நகர்", "9841556789", 1.0, 0.0, 56.0, 5, "கூகுள் பே மூலம் பணம் செலுத்துவார்", "ACTIVE")
     );
 
+    private static final java.util.List<Customer> CUSTOMER_LIST = new java.util.concurrent.CopyOnWriteArrayList<>(SAMPLE_CUSTOMERS);
+
     public static void main(String[] args) throws IOException {
         HttpServer server = HttpServer.create(new InetSocketAddress(PORT), 0);
 
@@ -45,6 +47,9 @@ public class MilkDeliveryServer {
         server.createContext("/api/route/demand", new RouteDemandHandler());
         server.createContext("/api/billing/demo", new DemoBillingHandler());
         server.createContext("/api/extra-requests", new ExtraRequestsHandler());
+        server.createContext("/api/leave-requests", new LeaveRequestsHandler());
+        server.createContext("/api/device-tokens", new DeviceTokensHandler());
+        server.createContext("/api/send-notification", new SendNotificationHandler());
 
         server.setExecutor(null);
         System.out.println("==================================================");
@@ -58,14 +63,32 @@ public class MilkDeliveryServer {
     private static void sendJsonResponse(HttpExchange exchange, int statusCode, String json) throws IOException {
         exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
         exchange.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
-        exchange.getResponseHeaders().set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-        exchange.getResponseHeaders().set("Access-Control-Allow-Headers", "Content-Type");
+        exchange.getResponseHeaders().set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+        exchange.getResponseHeaders().set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
 
         byte[] bytes = json.getBytes(StandardCharsets.UTF_8);
         exchange.sendResponseHeaders(statusCode, bytes.length);
         try (OutputStream os = exchange.getResponseBody()) {
             os.write(bytes);
         }
+    }
+
+    private static String extractJsonField(String json, String field) {
+        if (json == null) return null;
+        java.util.regex.Pattern p = java.util.regex.Pattern.compile("\"" + field + "\"\\s*:\\s*\"([^\"]*)\"");
+        java.util.regex.Matcher m = p.matcher(json);
+        if (m.find()) return m.group(1);
+        return null;
+    }
+
+    private static double extractDoubleField(String json, String field, double defVal) {
+        if (json == null) return defVal;
+        java.util.regex.Pattern p = java.util.regex.Pattern.compile("\"" + field + "\"\\s*:\\s*([0-9.]+)");
+        java.util.regex.Matcher m = p.matcher(json);
+        if (m.find()) {
+            try { return Double.parseDouble(m.group(1)); } catch (Exception e) {}
+        }
+        return defVal;
     }
 
     static class HealthHandler implements HttpHandler {
@@ -86,18 +109,77 @@ public class MilkDeliveryServer {
     static class CustomersHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
-            List<Customer> optimized = routeService.optimizeDeliverySequence(SAMPLE_CUSTOMERS);
-            StringBuilder sb = new StringBuilder("[");
-            for (int i = 0; i < optimized.size(); i++) {
-                Customer c = optimized.get(i);
-                sb.append(String.format(
-                    "{\"id\":\"%s\",\"name\":\"%s\",\"houseNo\":\"%s\",\"street\":\"%s\",\"phone\":\"%s\",\"morningQty\":%.1f,\"eveningQty\":%.1f,\"rate\":%.0f,\"routeOrder\":%d}",
-                    c.id(), c.name(), c.houseNo(), c.street(), c.phone(), c.defaultMorningQty(), c.defaultEveningQty(), c.ratePerLitre(), c.routeOrder()
-                ));
-                if (i < optimized.size() - 1) sb.append(",");
+            String method = exchange.getRequestMethod();
+            if ("OPTIONS".equalsIgnoreCase(method)) {
+                sendJsonResponse(exchange, 200, "{}");
+                return;
             }
-            sb.append("]");
-            sendJsonResponse(exchange, 200, sb.toString());
+            if ("POST".equalsIgnoreCase(method)) {
+                byte[] bytes = exchange.getRequestBody().readAllBytes();
+                String body = new String(bytes, StandardCharsets.UTF_8);
+                try {
+                    String id = extractJsonField(body, "id");
+                    if (id == null || id.isEmpty()) id = "cust_" + System.currentTimeMillis();
+                    String name = extractJsonField(body, "name");
+                    String houseNo = extractJsonField(body, "houseNo");
+                    String street = extractJsonField(body, "street");
+                    String phone = extractJsonField(body, "phone");
+                    double morning = extractDoubleField(body, "defaultMorningQty", 1.0);
+                    double evening = extractDoubleField(body, "defaultEveningQty", 0.0);
+                    double rate = extractDoubleField(body, "ratePerLitre", 56.0);
+                    int order = CUSTOMER_LIST.size() + 1;
+                    String notes = extractJsonField(body, "notes");
+
+                    Customer newCust = new Customer(
+                        id, 
+                        name != null ? name : "புதிய வாடிக்கையாளர்", 
+                        houseNo != null ? houseNo : "—", 
+                        street != null ? street : "", 
+                        phone != null ? phone : "", 
+                        morning, 
+                        evening, 
+                        rate, 
+                        order, 
+                        notes != null ? notes : "", 
+                        "ACTIVE"
+                    );
+
+                    int existingIdx = -1;
+                    for (int i = 0; i < CUSTOMER_LIST.size(); i++) {
+                        Customer c = CUSTOMER_LIST.get(i);
+                        if (c.id().equals(id) || (phone != null && !phone.isEmpty() && c.phone().replaceAll("[^0-9]", "").equals(phone.replaceAll("[^0-9]", "")))) {
+                            existingIdx = i;
+                            break;
+                        }
+                    }
+                    if (existingIdx >= 0) {
+                        CUSTOMER_LIST.set(existingIdx, newCust);
+                    } else {
+                        CUSTOMER_LIST.add(newCust);
+                    }
+                    sendJsonResponse(exchange, 200, "{\"success\":true,\"message\":\"Customer saved\",\"data\":{\"id\":\"" + id + "\"}}");
+                    return;
+                } catch (Exception e) {
+                    sendJsonResponse(exchange, 400, "{\"error\":\"" + e.getMessage() + "\"}");
+                    return;
+                }
+            }
+            if ("GET".equalsIgnoreCase(method)) {
+                List<Customer> list = new ArrayList<>(CUSTOMER_LIST);
+                StringBuilder sb = new StringBuilder("{\"success\":true,\"count\":" + list.size() + ",\"data\":[");
+                for (int i = 0; i < list.size(); i++) {
+                    Customer c = list.get(i);
+                    sb.append(String.format(
+                        "{\"id\":\"%s\",\"name\":\"%s\",\"houseNo\":\"%s\",\"street\":\"%s\",\"phone\":\"%s\",\"defaultMorningQty\":%.1f,\"defaultEveningQty\":%.1f,\"ratePerLitre\":%.0f,\"routeOrder\":%d,\"status\":\"%s\"}",
+                        c.id(), c.name(), c.houseNo(), c.street(), c.phone(), c.defaultMorningQty(), c.defaultEveningQty(), c.ratePerLitre(), c.routeOrder(), c.status()
+                    ));
+                    if (i < list.size() - 1) sb.append(",");
+                }
+                sb.append("]}");
+                sendJsonResponse(exchange, 200, sb.toString());
+                return;
+            }
+            sendJsonResponse(exchange, 405, "{\"error\":\"Method not allowed\"}");
         }
     }
 
@@ -161,15 +243,129 @@ public class MilkDeliveryServer {
                 return;
             }
             if ("GET".equalsIgnoreCase(method)) {
-                String json = "[" + String.join(",", requests) + "]";
+                String json = "{\"success\":true,\"count\":" + requests.size() + ",\"data\":[" + String.join(",", requests) + "]}";
                 sendJsonResponse(exchange, 200, json);
                 return;
             }
-            if ("POST".equalsIgnoreCase(method) || "PUT".equalsIgnoreCase(method)) {
+            if ("POST".equalsIgnoreCase(method)) {
                 byte[] bytes = exchange.getRequestBody().readAllBytes();
                 String body = new String(bytes, StandardCharsets.UTF_8);
                 requests.add(0, body);
-                sendJsonResponse(exchange, 200, "{\"success\":true,\"message\":\"Extra request updated on Java server\"}");
+                sendJsonResponse(exchange, 200, "{\"success\":true,\"message\":\"Extra request recorded\"}");
+                return;
+            }
+            if ("PUT".equalsIgnoreCase(method)) {
+                byte[] bytes = exchange.getRequestBody().readAllBytes();
+                String body = new String(bytes, StandardCharsets.UTF_8);
+                String reqId = extractJsonField(body, "requestId");
+                String status = extractJsonField(body, "status");
+                if (reqId != null && status != null) {
+                    for (int i = 0; i < requests.size(); i++) {
+                        String r = requests.get(i);
+                        if (r.contains("\"id\":\"" + reqId + "\"") || r.contains("\"id\": \"" + reqId + "\"")) {
+                            String updated = r.replaceAll("\"status\"\\s*:\\s*\"[^\"]*\"", "\"status\":\"" + status + "\"");
+                            requests.set(i, updated);
+                            break;
+                        }
+                    }
+                }
+                sendJsonResponse(exchange, 200, "{\"success\":true,\"message\":\"Extra request status updated\"}");
+                return;
+            }
+            sendJsonResponse(exchange, 405, "{\"error\":\"Method not allowed\"}");
+        }
+    }
+
+    static class LeaveRequestsHandler implements HttpHandler {
+        private static final java.util.List<String> leaveRequests = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            String method = exchange.getRequestMethod();
+            if ("OPTIONS".equalsIgnoreCase(method)) {
+                sendJsonResponse(exchange, 200, "{}");
+                return;
+            }
+            if ("GET".equalsIgnoreCase(method)) {
+                String json = "{\"success\":true,\"count\":" + leaveRequests.size() + ",\"data\":[" + String.join(",", leaveRequests) + "]}";
+                sendJsonResponse(exchange, 200, json);
+                return;
+            }
+            if ("POST".equalsIgnoreCase(method)) {
+                byte[] bytes = exchange.getRequestBody().readAllBytes();
+                String body = new String(bytes, StandardCharsets.UTF_8);
+                leaveRequests.add(0, body);
+                sendJsonResponse(exchange, 200, "{\"success\":true,\"message\":\"Leave request recorded\"}");
+                return;
+            }
+            if ("PUT".equalsIgnoreCase(method)) {
+                byte[] bytes = exchange.getRequestBody().readAllBytes();
+                String body = new String(bytes, StandardCharsets.UTF_8);
+                String reqId = extractJsonField(body, "requestId");
+                String status = extractJsonField(body, "status");
+                if (reqId != null && status != null) {
+                    for (int i = 0; i < leaveRequests.size(); i++) {
+                        String r = leaveRequests.get(i);
+                        if (r.contains("\"id\":\"" + reqId + "\"") || r.contains("\"id\": \"" + reqId + "\"")) {
+                            String updated = r.replaceAll("\"status\"\\s*:\\s*\"[^\"]*\"", "\"status\":\"" + status + "\"");
+                            leaveRequests.set(i, updated);
+                            break;
+                        }
+                    }
+                }
+                sendJsonResponse(exchange, 200, "{\"success\":true,\"message\":\"Leave request status updated\"}");
+                return;
+            }
+            sendJsonResponse(exchange, 405, "{\"error\":\"Method not allowed\"}");
+        }
+    }
+
+    static class DeviceTokensHandler implements HttpHandler {
+        private static final java.util.List<String> tokens = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            String method = exchange.getRequestMethod();
+            if ("OPTIONS".equalsIgnoreCase(method)) {
+                sendJsonResponse(exchange, 200, "{}");
+                return;
+            }
+            if ("GET".equalsIgnoreCase(method)) {
+                String json = "{\"success\":true,\"data\":[" + String.join(",", tokens) + "]}";
+                sendJsonResponse(exchange, 200, json);
+                return;
+            }
+            if ("POST".equalsIgnoreCase(method)) {
+                byte[] bytes = exchange.getRequestBody().readAllBytes();
+                String body = new String(bytes, StandardCharsets.UTF_8);
+                tokens.add(body);
+                sendJsonResponse(exchange, 200, "{\"success\":true,\"message\":\"Device token registered\"}");
+                return;
+            }
+            sendJsonResponse(exchange, 200, "{\"success\":true}");
+        }
+    }
+
+    static class SendNotificationHandler implements HttpHandler {
+        private static final java.util.List<String> notifications = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            String method = exchange.getRequestMethod();
+            if ("OPTIONS".equalsIgnoreCase(method)) {
+                sendJsonResponse(exchange, 200, "{}");
+                return;
+            }
+            if ("GET".equalsIgnoreCase(method)) {
+                String json = "{\"success\":true,\"data\":[" + String.join(",", notifications) + "]}";
+                sendJsonResponse(exchange, 200, json);
+                return;
+            }
+            if ("POST".equalsIgnoreCase(method)) {
+                byte[] bytes = exchange.getRequestBody().readAllBytes();
+                String body = new String(bytes, StandardCharsets.UTF_8);
+                notifications.add(0, body);
+                sendJsonResponse(exchange, 200, "{\"success\":true,\"message\":\"Notification sent\"}");
                 return;
             }
             sendJsonResponse(exchange, 405, "{\"error\":\"Method not allowed\"}");

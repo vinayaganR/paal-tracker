@@ -34,13 +34,20 @@ export default function CustomerDirectory() {
 
   const [formData, setFormData] = useState(initialForm);
 
-  const loadCustomers = () => {
+  const loadCustomers = async () => {
+    try {
+      await dairyService.syncCustomers();
+    } catch (e) {}
     const list = dairyService.getCustomers().sort((a, b) => (a.routeOrder || 0) - (b.routeOrder || 0));
     setCustomers(list);
   };
 
   useEffect(() => {
     loadCustomers();
+    const unsubscribe = dairyService.subscribeToNotifications(() => {
+      loadCustomers();
+    });
+    return () => unsubscribe();
   }, []);
 
   const handleAddNew = () => {

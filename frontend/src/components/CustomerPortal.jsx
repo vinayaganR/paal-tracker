@@ -127,7 +127,10 @@ export default function CustomerPortal() {
     setLedgerItem(active || null);
   };
 
-  const loadRequests = () => {
+  const loadRequests = async () => {
+    try {
+      await dairyService.syncAllRequests();
+    } catch (e) {}
     if (!activeCustomer) return;
     const allExtra = dairyService.getExtraMilkRequests();
     const myRequests = allExtra.filter(r => r.customerId === activeCustomer.id);
@@ -169,7 +172,14 @@ export default function CustomerPortal() {
       }
     });
 
-    return () => unsubscribe();
+    const pollTimer = setInterval(() => {
+      loadRequests();
+    }, 10000);
+
+    return () => {
+      clearInterval(pollTimer);
+      unsubscribe();
+    };
   }, [activeCustomer, selectedMonth]);
 
   // Cut-off check for leave request

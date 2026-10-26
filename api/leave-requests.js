@@ -75,6 +75,22 @@ export default function handler(req, res) {
 
       inMemoryLeaveRequests.unshift(newLeave);
 
+      // Trigger notification for Dairy Owner
+      try {
+        const notifPayload = {
+          title: '⏸️ புதிய வாடிக்கையாளர் விடுப்பு கோரிக்கை!',
+          message: `${newLeave.customerName} (${newLeave.houseNo}) ${newLeave.fromDate} முதல் ${newLeave.toDate} வரை (${newLeave.shift === 'BOTH' ? 'முழு நாள்' : newLeave.shift}) பால் விடுப்பு கேட்டுள்ளார்.`,
+          targetRole: 'ADMIN',
+          type: 'LEAVE_REQUEST_CREATED',
+          payload: newLeave
+        };
+        fetch(`${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host || 'localhost:3000'}/api/send-notification`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(notifPayload)
+        }).catch(() => {});
+      } catch (err) {}
+
       return res.status(201).json({
         success: true,
         message: 'Leave request submitted to farm vendor.',
@@ -106,6 +122,27 @@ export default function handler(req, res) {
         vendorNote: vendorNote || (status === 'ACCEPTED' ? 'Leave noted! Milk will be paused.' : 'Cannot pause delivery at this time.'),
         respondedAt: new Date().toISOString()
       };
+
+      const updated = inMemoryLeaveRequests[index];
+
+      // Trigger notification for Customer
+      try {
+        const notifPayload = {
+          title: status === 'ACCEPTED' ? '🏖️ பால் விடுப்பு ஏற்கப்பட்டது!' : 'ℹ️ பால் விடுப்பு கோரிக்கை தகவல்',
+          message: status === 'ACCEPTED' 
+            ? `உங்கள் விடுப்பு (${updated.fromDate} - ${updated.toDate}) ஏற்றுக்கொள்ளப்பட்டது. பால் விநியோகம் நிறுத்தப்படும்.` 
+            : `மன்னிக்கவும், தங்களால் கோரப்பட்ட விடுப்பு ஏற்கப்படவில்லை.`,
+          targetRole: 'CUSTOMER',
+          targetUserId: updated.customerId,
+          type: 'LEAVE_REQUEST_RESPONDED',
+          payload: updated
+        };
+        fetch(`${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host || 'localhost:3000'}/api/send-notification`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(notifPayload)
+        }).catch(() => {});
+      } catch (err) {}
 
       return res.status(200).json({
         success: true,

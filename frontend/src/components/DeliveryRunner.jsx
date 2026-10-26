@@ -26,6 +26,7 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
   const [extraRequests, setExtraRequests] = useState([]);
   const [leaveRequests, setLeaveRequests] = useState([]);
   const [isRequestsModalOpen, setIsRequestsModalOpen] = useState(false);
+  const [incomingAlert, setIncomingAlert] = useState(null);
 
   const handleOpenExtraModal = (custItem) => {
     setActiveModalCust(custItem);
@@ -86,7 +87,10 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
     setSheet(data);
   };
 
-  const loadRequests = () => {
+  const loadRequests = async () => {
+    try {
+      await dairyService.syncAllRequests();
+    } catch (e) {}
     const allExtra = dairyService.getExtraMilkRequests();
     const allLeaves = dairyService.getLeaveRequests();
     setExtraRequests(allExtra);
@@ -97,12 +101,34 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
     loadData();
     loadRequests();
 
-    const unsubscribe = dairyService.subscribeToNotifications(() => {
+    const unsubscribe = dairyService.subscribeToNotifications((data) => {
       loadRequests();
       loadData();
+      if (data?.type === 'EXTRA_REQUEST_CREATED' && data.payload) {
+        setIncomingAlert({
+          title: lang === 'ta' ? '🥛 புதிய கூடுதல் பால் கோரிக்கை!' : '🥛 New Extra Milk Request!',
+          desc: `${data.payload.customerName} (${data.payload.houseNo}) +${data.payload.extraLitres}L (${data.payload.shift === 'MORNING' ? 'காலை' : 'மாலை'})`
+        });
+        setTimeout(() => setIncomingAlert(null), 9000);
+      } else if (data?.type === 'LEAVE_REQUEST_CREATED' && data.payload) {
+        setIncomingAlert({
+          title: lang === 'ta' ? '⏸️ புதிய விடுப்பு கோரிக்கை!' : '⏸️ New Leave Request!',
+          desc: `${data.payload.customerName} (${data.payload.houseNo}) ${data.payload.fromDate} - ${data.payload.toDate}`
+        });
+        setTimeout(() => setIncomingAlert(null), 9000);
+      }
     });
 
-    return () => unsubscribe();
+    // Periodic sync every 10 seconds to catch cloud requests automatically
+    const syncTimer = setInterval(() => {
+      loadRequests();
+      loadData();
+    }, 10000);
+
+    return () => {
+      clearInterval(syncTimer);
+      unsubscribe();
+    };
   }, [selectedDate, selectedShift]);
 
   const pendingExtra = extraRequests.filter(r => r.status === 'PENDING');
@@ -193,6 +219,34 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
   return (
     <div className="space-y-5">
       
+      {/* Real-time Floating Notification Popup for Incoming Requests */}
+      {incomingAlert && (
+        <div className="fixed top-4 left-4 right-4 sm:left-auto sm:right-6 sm:max-w-md z-50 bg-gradient-to-r from-emerald-900 via-slate-900 to-emerald-950 text-white p-4 rounded-3xl shadow-2xl border-2 border-emerald-400 ring-4 ring-emerald-500/20 flex items-center justify-between gap-3 animate-in slide-in-from-top duration-300">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-xl flex-shrink-0">
+              🔔
+            </div>
+            <div>
+              <h4 className="font-extrabold text-xs sm:text-sm text-emerald-300 leading-tight">
+                {incomingAlert.title}
+              </h4>
+              <p className="text-[11px] text-slate-200 font-medium">
+                {incomingAlert.desc}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              setIncomingAlert(null);
+              setIsRequestsModalOpen(true);
+            }}
+            className="flex-shrink-0 px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs shadow-md active:scale-95 transition"
+          >
+            {lang === 'ta' ? 'பார்க்க →' : 'View →'}
+          </button>
+        </div>
+      )}
+
       {/* Live Incoming Requests (Extra Milk & Leave Requests) Notification Banner for Appa */}
       {totalPending > 0 && (
         <div className="bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-slate-950 p-4 sm:p-5 rounded-3xl shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-2 border-amber-300 ring-4 ring-amber-400/20 animate-in fade-in">
@@ -225,7 +279,10 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
 
           <div className="flex items-center space-x-2 flex-shrink-0">
             <button
-              onClick={() => setIsRequestsModalOpen(true)}
+              onClick={() => {
+                loadRequests();
+                setIsRequestsModalOpen(true);
+              }}
               className="w-full sm:w-auto px-4 py-2.5 rounded-2xl bg-slate-950 hover:bg-slate-900 active:scale-98 text-white text-xs sm:text-sm font-black shadow-lg transition flex items-center justify-center space-x-1.5"
             >
               <span>{t('extraRequestsTitle')}</span>

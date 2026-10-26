@@ -11,6 +11,8 @@ import CustomerPortal from './components/CustomerPortal';
 import MilkYieldTracker from './components/MilkYieldTracker';
 import InteractiveTour from './components/InteractiveTour';
 import InstallAppBanner from './components/InstallAppBanner';
+import { notificationService } from './services/notificationService';
+import { dairyService } from './services/dairyService';
 import { 
   Bike, 
   Users, 
@@ -43,6 +45,13 @@ function MainApp() {
   const [isTourOpen, setIsTourOpen] = useState(false);
 
   // Auto-launch interactive tour for first-time visitors
+  useEffect(() => {
+    if (currentUser) {
+      notificationService.init(currentUser);
+      dairyService.syncAllRequests();
+    }
+  }, [currentUser]);
+
   useEffect(() => {
     if (isAdmin) {
       const seen = localStorage.getItem('paal_vandi_owner_tour_seen');
@@ -419,6 +428,25 @@ function MainApp() {
                   onChange={(e) => setSettingsForm({ ...settingsForm, phone: e.target.value })}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold"
                 />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">
+                  🌐 கிளவுட் சர்வர் URL (Cloud Server URL for Multi-Phone Sync)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. https://paal-tracker.vercel.app"
+                  value={settingsForm.serverUrl || localStorage.getItem('paal_vandi_server_url') || ''}
+                  onChange={(e) => {
+                    setSettingsForm({ ...settingsForm, serverUrl: e.target.value });
+                    localStorage.setItem('paal_vandi_server_url', e.target.value);
+                  }}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-emerald-800"
+                />
+                <span className="text-[10px] text-slate-400 block mt-0.5">
+                  தனித்தனி மொபைல் போன்களில் இயங்க Vercel லைவ் லிங்க் அல்லது சர்வர் IP உள்ளிடவும்
+                </span>
               </div>
 
               <div>

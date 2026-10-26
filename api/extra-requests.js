@@ -76,6 +76,23 @@ export default function handler(req, res) {
 
       inMemoryRequests.unshift(newRequest);
 
+      // Trigger notification for Dairy Owner
+      try {
+        const notifPayload = {
+          title: '🥛 புதிய கூடுதல் பால் கோரிக்கை!',
+          message: `${newRequest.customerName} (${newRequest.houseNo}) ${newRequest.shift === 'MORNING' ? 'காலை' : 'மாலை'} ஷிப்டுக்கு +${newRequest.extraLitres}L கூடுதல் பால் கேட்டுள்ளார்!`,
+          targetRole: 'ADMIN',
+          type: 'EXTRA_REQUEST_CREATED',
+          payload: newRequest
+        };
+        // Fire-and-forget internal dispatch if running on same server instance
+        fetch(`${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host || 'localhost:3000'}/api/send-notification`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(notifPayload)
+        }).catch(() => {});
+      } catch (err) {}
+
       return res.status(201).json({
         success: true,
         message: 'Extra milk request submitted. Waiting for vendor approval.',
@@ -107,6 +124,27 @@ export default function handler(req, res) {
         vendorNote: vendorNote || (status === 'ACCEPTED' ? 'Milk is available, will deliver!' : 'Sorry, extra milk is not available for this shift.'),
         respondedAt: new Date().toISOString()
       };
+
+      const updated = inMemoryRequests[index];
+
+      // Trigger notification for Customer
+      try {
+        const notifPayload = {
+          title: status === 'ACCEPTED' ? '🎉 கூடுதல் பால் உறுதி செய்யப்பட்டது!' : 'ℹ️ கூடுதல் பால் கோரிக்கை தகவல்',
+          message: status === 'ACCEPTED' 
+            ? `உங்கள் ${updated.extraLitres}L பால் கோரிக்கை ஏற்கப்பட்டது. விநியோகம் செய்யப்படும்!` 
+            : `மன்னிக்கவும், ${updated.shift} ஷிப்டுக்கு கூடுதல் பால் இருப்பு இல்லை.`,
+          targetRole: 'CUSTOMER',
+          targetUserId: updated.customerId,
+          type: 'EXTRA_REQUEST_RESPONDED',
+          payload: updated
+        };
+        fetch(`${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host || 'localhost:3000'}/api/send-notification`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(notifPayload)
+        }).catch(() => {});
+      } catch (err) {}
 
       return res.status(200).json({
         success: true,

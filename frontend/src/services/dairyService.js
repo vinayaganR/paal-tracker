@@ -1,6 +1,8 @@
 // Dairy Business Data Service (Firestore + Local Persistence)
 import { db, isRealFirebase } from '../config/firebase';
 import { collection, doc, setDoc, getDocs, updateDoc, query, where } from 'firebase/firestore';
+import { notificationService } from './notificationService';
+import { getApiBaseUrl } from '../config/apiConfig';
 
 const INITIAL_CUSTOMERS = [
   {
@@ -85,30 +87,81 @@ export const dairyService = {
     return INITIAL_CUSTOMERS;
   },
 
+  // Synchronize customers from backend API
+  syncCustomers: async () => {
+    try {
+      const baseUrl = getApiBaseUrl();
+      const res = await fetch(`${baseUrl}/api/customers`).catch(() => null);
+      if (!res || !res.ok) return dairyService.getCustomers();
+      const json = await res.json().catch(() => null);
+      const serverList = Array.isArray(json) ? json : (json?.data && Array.isArray(json.data) ? json.data : null);
+
+      if (serverList && serverList.length > 0) {
+        const local = dairyService.getCustomers();
+        const map = new Map();
+        local.forEach(c => {
+          if (c.id) map.set(c.id, c);
+        });
+        serverList.forEach(sc => {
+          const item = typeof sc === 'string' ? JSON.parse(sc) : sc;
+          if (item?.id) {
+            const existing = map.get(item.id);
+            map.set(item.id, { ...existing, ...item });
+          } else if (item?.phone) {
+            const match = Array.from(map.values()).find(c => c.phone && c.phone.replace(/[^0-9]/g, '') === item.phone.replace(/[^0-9]/g, ''));
+            if (match) {
+              map.set(match.id, { ...match, ...item });
+            } else {
+              const newId = `cust_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
+              map.set(newId, { ...item, id: newId });
+            }
+          }
+        });
+        const merged = Array.from(map.values()).sort((a, b) => (a.routeOrder || 0) - (b.routeOrder || 0));
+        localStorage.setItem('paal_vandi_customers', JSON.stringify(merged));
+        return merged;
+      }
+    } catch (e) {
+      console.warn('Sync customers error:', e);
+    }
+    return dairyService.getCustomers();
+  },
+
   // Save Customer (Add or Update)
   saveCustomer: (customer) => {
     const list = dairyService.getCustomers();
     const index = list.findIndex(c => c.id === customer.id);
     let updated;
+    let savedCustomer;
     if (index >= 0) {
       updated = [...list];
       updated[index] = customer;
+      savedCustomer = customer;
     } else {
-      const newCust = {
+      savedCustomer = {
         ...customer,
         id: customer.id || `cust_${Date.now()}`,
         routeOrder: customer.routeOrder || list.length + 1,
         status: 'ACTIVE'
       };
-      updated = [...list, newCust];
+      updated = [...list, savedCustomer];
     }
     localStorage.setItem('paal_vandi_customers', JSON.stringify(updated));
     
+    // Sync to Backend Server API
+    try {
+      fetch(`${getApiBaseUrl()}/api/customers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(savedCustomer)
+      }).catch(() => {});
+    } catch (e) {}
+
     // Firestore async sync
     if (isRealFirebase && db) {
       try {
-        const docRef = doc(db, 'customers', customer.id || updated[updated.length - 1].id);
-        setDoc(docRef, customer, { merge: true });
+        const docRef = doc(db, 'customers', savedCustomer.id);
+        setDoc(docRef, savedCustomer, { merge: true });
       } catch (e) {
         console.warn("Firestore sync error:", e);
       }
@@ -121,6 +174,49 @@ export const dairyService = {
     const list = dairyService.getCustomers().filter(c => c.id !== id);
     localStorage.setItem('paal_vandi_customers', JSON.stringify(list));
     return list;
+  },
+
+  // Customer Self-Registration (Mobile App & Website)
+  registerCustomer: async (newCustomerData) => {
+    const list = dairyService.getCustomers();
+    const cleanPhone = (newCustomerData.phone || '').trim().replace(/[^0-9]/g, '');
+
+    // Check if phone already registered
+    const existing = list.find(c => (c.phone || '').replace(/[^0-9]/g, '') === cleanPhone);
+    if (existing) {
+      return { success: false, error: 'PHONE_EXISTS', message: 'இந்த தொலைபேசி எண் ஏற்கனவே பதிவு செய்யப்பட்டுள்ளது (Phone number already registered)' };
+    }
+
+    const newCustomer = {
+      id: `cust_${Date.now()}`,
+      name: newCustomerData.name?.trim() || 'புதிய வாடிக்கையாளர்',
+      houseNo: newCustomerData.houseNo?.trim() || '—',
+      street: newCustomerData.street?.trim() || 'ஊர் பகுதி',
+      phone: newCustomerData.phone?.trim() || '',
+      defaultMorningQty: Number(newCustomerData.defaultMorningQty) || 1.0,
+      defaultEveningQty: Number(newCustomerData.defaultEveningQty) || 0.0,
+      ratePerLitre: Number(newCustomerData.ratePerLitre) || 56,
+      routeOrder: list.length + 1,
+      notes: newCustomerData.notes || 'புதிய ஆன்லைன் பதிவு',
+      status: 'ACTIVE',
+      registeredAt: new Date().toISOString()
+    };
+
+    dairyService.saveCustomer(newCustomer);
+
+    // Broadcast customer created event so Vendor sees them immediately
+    dairyService.broadcastEvent('CUSTOMER_REGISTERED', newCustomer);
+
+    // Notify Dairy Owner of new customer registration
+    notificationService.sendPushNotification({
+      targetRole: 'ADMIN',
+      title: '🎉 புதிய வாடிக்கையாளர் பதிவு!',
+      body: `${newCustomer.name} (${newCustomer.houseNo}, ${newCustomer.street}) புதிதாக இணைந்துள்ளார்!`,
+      type: 'CUSTOMER_REGISTERED',
+      payload: newCustomer
+    });
+
+    return { success: true, customer: newCustomer };
   },
 
   // Get Today's Delivery Records for given Date and Shift
@@ -340,7 +436,7 @@ export const dairyService = {
 
     // Try posting to server API asynchronously
     try {
-      fetch('/api/leave-requests', {
+      fetch(`${getApiBaseUrl()}/api/leave-requests`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newLeave)
@@ -349,6 +445,15 @@ export const dairyService = {
 
     // Broadcast event to notify Vendor in real time
     dairyService.broadcastEvent('LEAVE_REQUEST_CREATED', newLeave);
+
+    // Send cross-device push notification to Dairy Owner
+    notificationService.sendPushNotification({
+      targetRole: 'ADMIN',
+      title: '⏸️ புதிய வாடிக்கையாளர் விடுப்பு கோரிக்கை!',
+      body: `${newLeave.customerName} (${newLeave.houseNo}) ${newLeave.fromDate} முதல் ${newLeave.toDate} வரை (${newLeave.shift === 'BOTH' ? 'முழு நாள்' : newLeave.shift}) பால் விடுப்பு கேட்டுள்ளார்.`,
+      type: 'LEAVE_REQUEST_CREATED',
+      payload: newLeave
+    });
 
     return newLeave;
   },
@@ -407,7 +512,7 @@ export const dairyService = {
 
     // Try pushing response to server API asynchronously
     try {
-      fetch('/api/leave-requests', {
+      fetch(`${getApiBaseUrl()}/api/leave-requests`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -420,6 +525,18 @@ export const dairyService = {
 
     // Broadcast event so Customer tab receives immediate confirmation!
     dairyService.broadcastEvent('LEAVE_REQUEST_RESPONDED', updatedReq);
+
+    // Send cross-device push notification to Customer
+    notificationService.sendPushNotification({
+      targetRole: 'CUSTOMER',
+      targetUserId: updatedReq.customerId,
+      title: status === 'ACCEPTED' ? '🏖️ பால் விடுப்பு ஏற்கப்பட்டது!' : 'ℹ️ பால் விடுப்பு தகவல்',
+      body: status === 'ACCEPTED' 
+        ? `உங்கள் விடுப்பு (${updatedReq.fromDate} - ${updatedReq.toDate}) ஏற்கப்பட்டது. பால் விநியோகம் நிறுத்தப்படும்.` 
+        : 'மன்னிக்கவும்! லீவு ஏற்கப்படவில்லை.',
+      type: 'LEAVE_REQUEST_RESPONDED',
+      payload: updatedReq
+    });
 
     return updatedReq;
   },
@@ -478,7 +595,7 @@ export const dairyService = {
 
     // Post to server API asynchronously
     try {
-      fetch('/api/extra-requests', {
+      fetch(`${getApiBaseUrl()}/api/extra-requests`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newReq)
@@ -487,6 +604,15 @@ export const dairyService = {
 
     // Broadcast event to notify Vendor tab in real-time
     dairyService.broadcastEvent('EXTRA_REQUEST_CREATED', newReq);
+
+    // Send cross-device push notification to Dairy Owner
+    notificationService.sendPushNotification({
+      targetRole: 'ADMIN',
+      title: '🥛 புதிய கூடுதல் பால் கோரிக்கை!',
+      body: `${newReq.customerName} (${newReq.houseNo}) ${newReq.shift === 'MORNING' ? 'காலை' : 'மாலை'} ஷிப்டுக்கு +${newReq.extraLitres}L கூடுதல் பால் கேட்டுள்ளார்!`,
+      type: 'EXTRA_REQUEST_CREATED',
+      payload: newReq
+    });
 
     return newReq;
   },
@@ -531,7 +657,7 @@ export const dairyService = {
 
     // Push response to server API asynchronously
     try {
-      fetch('/api/extra-requests', {
+      fetch(`${getApiBaseUrl()}/api/extra-requests`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -545,7 +671,65 @@ export const dairyService = {
     // Broadcast event so Customer tab receives immediate confirmation!
     dairyService.broadcastEvent('EXTRA_REQUEST_RESPONDED', updatedReq);
 
+    // Send cross-device push notification to Customer
+    notificationService.sendPushNotification({
+      targetRole: 'CUSTOMER',
+      targetUserId: updatedReq.customerId,
+      title: status === 'ACCEPTED' ? '🎉 கூடுதல் பால் உறுதி செய்யப்பட்டது!' : 'ℹ️ கூடுதல் பால் தகவல்',
+      body: status === 'ACCEPTED' 
+        ? `உங்கள் ${updatedReq.extraLitres}L பால் கோரிக்கை ஏற்கப்பட்டது!` 
+        : 'மன்னிக்கவும்! கூடுதல் பால் இருப்பு இல்லை.',
+      type: 'EXTRA_REQUEST_RESPONDED',
+      payload: updatedReq
+    });
+
     return updatedReq;
+  },
+
+  // Sync all requests across devices from cloud server
+  syncAllRequests: async () => {
+    try {
+      const baseUrl = getApiBaseUrl();
+      const [extraRes, leaveRes] = await Promise.all([
+        fetch(`${baseUrl}/api/extra-requests`).then(r => r.ok ? r.json() : null).catch(() => null),
+        fetch(`${baseUrl}/api/leave-requests`).then(r => r.ok ? r.json() : null).catch(() => null)
+      ]);
+
+      const extraData = Array.isArray(extraRes) ? extraRes : (extraRes?.data && Array.isArray(extraRes.data) ? extraRes.data : null);
+      if (extraData && Array.isArray(extraData)) {
+        const local = dairyService.getExtraMilkRequests();
+        const mergedMap = new Map();
+        local.forEach(r => mergedMap.set(r.id, r));
+        extraData.forEach(r => {
+          const item = typeof r === 'string' ? JSON.parse(r) : r;
+          if (item?.id) {
+            mergedMap.set(item.id, { ...mergedMap.get(item.id), ...item });
+          }
+        });
+        const merged = Array.from(mergedMap.values()).sort((a,b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+        localStorage.setItem('paal_vandi_extra_requests', JSON.stringify(merged));
+      }
+
+      const leaveData = Array.isArray(leaveRes) ? leaveRes : (leaveRes?.data && Array.isArray(leaveRes.data) ? leaveRes.data : null);
+      if (leaveData && Array.isArray(leaveData)) {
+        const local = dairyService.getLeaveRequests();
+        const mergedMap = new Map();
+        local.forEach(l => mergedMap.set(l.id, l));
+        leaveData.forEach(l => {
+          const item = typeof l === 'string' ? JSON.parse(l) : l;
+          if (item?.id) {
+            mergedMap.set(item.id, { ...mergedMap.get(item.id), ...item });
+          }
+        });
+        const merged = Array.from(mergedMap.values()).sort((a,b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+        localStorage.setItem('paal_vandi_leave_requests', JSON.stringify(merged));
+      }
+
+      // Also sync customers together
+      await dairyService.syncCustomers();
+    } catch (e) {
+      console.warn('Sync requests note:', e);
+    }
   },
 
   // Real-time broadcast channel helper
