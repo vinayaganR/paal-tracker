@@ -36,11 +36,6 @@ export default function LoginPage() {
     dairyService.syncCustomers().catch(() => {});
   }, []);
 
-  // If already logged in, redirect straight to the appropriate dashboard!
-  if (currentUser) {
-    return <Navigate to={isAdmin ? "/runner" : "/portal"} replace />;
-  }
-
   // Active top tab: 'OWNER' | 'CUSTOMER'
   const [activeTab, setActiveTab] = useState('OWNER');
   const [copiedLink, setCopiedLink] = useState(false);
@@ -166,7 +161,7 @@ export default function LoginPage() {
   };
 
   const handleShareApp = () => {
-    const url = window.location.origin;
+    const url = `${window.location.origin}/login`;
     const shareText = lang === 'ta'
       ? `🥛 ${dairyInfo?.farmName || 'ஸ்ரீ காமதேனு பால் பண்ணை'} - பால் ஆர்டர், கூடுதல் பால் & விடுப்பு கோரிக்கைகளை எளிதாக பதிவு செய்ய இந்த லிங்கை திறக்கவும்:\n${url}`
       : `🥛 ${dairyInfo?.farmName || 'Kamadhenu Dairy'} - Order milk, request extra milk & leave online:\n${url}`;
@@ -183,7 +178,7 @@ export default function LoginPage() {
   };
 
   const handleCopyLink = () => {
-    const url = window.location.origin;
+    const url = `${window.location.origin}/login`;
     navigator.clipboard?.writeText(url).then(() => {
       setCopiedLink(true);
       setTimeout(() => setCopiedLink(false), 2500);
@@ -237,6 +232,27 @@ export default function LoginPage() {
             {t('loginSubtitle')}
           </p>
         </div>
+
+        {/* Existing Logged-in Session Banner */}
+        {currentUser && (
+          <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 flex items-center justify-between text-xs text-emerald-900 shadow-sm">
+            <div>
+              <span className="font-bold text-slate-600 block text-[11px]">
+                {lang === 'ta' ? 'தற்போது உள்நுழைந்துள்ள கணக்கு:' : 'Currently Active Session:'}
+              </span>
+              <span className="font-extrabold text-emerald-800 text-xs">
+                {isAdmin ? (dairyInfo?.ownerName || 'பண்ணை உரிமையாளர் (Owner)') : (currentUser.customer?.name || 'வாடிக்கையாளர்')}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate(isAdmin ? '/runner' : '/portal')}
+              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-xs shadow-sm transition active:scale-95"
+            >
+              {lang === 'ta' ? 'டாஷ்போர்டு ➔' : 'Dashboard ➔'}
+            </button>
+          </div>
+        )}
 
         {/* Role Selector Tabs (Appa vs Customer) */}
         <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1.5 rounded-2xl">

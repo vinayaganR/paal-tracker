@@ -243,7 +243,7 @@ function MainApp() {
                 <Route path="/billing" element={<BillingLedger />} />
                 <Route path="/milking" element={<MilkYieldTracker selectedDate={selectedDate} />} />
                 <Route path="/portal" element={<CustomerPortal />} />
-                <Route path="/login" element={<Navigate to="/runner" replace />} />
+                <Route path="/login" element={<LoginPage />} />
                 <Route path="*" element={<Navigate to="/runner" replace />} />
               </Routes>
             </main>
@@ -307,7 +307,7 @@ function MainApp() {
             <Routes>
               <Route path="/" element={<Navigate to="/portal" replace />} />
               <Route path="/portal" element={<CustomerPortal />} />
-              <Route path="/login" element={<Navigate to="/portal" replace />} />
+              <Route path="/login" element={<LoginPage />} />
               <Route path="*" element={<Navigate to="/portal" replace />} />
             </Routes>
           </main>
