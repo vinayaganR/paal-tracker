@@ -13,6 +13,8 @@ let inMemoryCustomers = [
     ratePerLitre: 56,
     routeOrder: 1,
     notes: 'கேட்டில் உள்ள பாத்திரத்தில் ஊற்றவும் (Leave in gate can)',
+    startDate: '2026-10-01',
+    registeredAt: '2026-10-01T00:00:00.000Z',
     status: 'ACTIVE'
   },
   {
@@ -26,6 +28,8 @@ let inMemoryCustomers = [
     ratePerLitre: 56,
     routeOrder: 2,
     notes: 'மணி அடிக்கவும் (Ring bell)',
+    startDate: '2026-10-01',
+    registeredAt: '2026-10-01T00:00:00.000Z',
     status: 'ACTIVE'
   },
   {
@@ -39,6 +43,8 @@ let inMemoryCustomers = [
     ratePerLitre: 56,
     routeOrder: 3,
     notes: 'பூனை வராதபடி மூடி வைக்கவும்',
+    startDate: '2026-10-01',
+    registeredAt: '2026-10-01T00:00:00.000Z',
     status: 'ACTIVE'
   },
   {
@@ -49,9 +55,11 @@ let inMemoryCustomers = [
     phone: '9944445678',
     defaultMorningQty: 2.0,
     defaultEveningQty: 1.0,
-    ratePerLitre: 54,
+    ratePerLitre: 54, // Discounted bulk rate
     routeOrder: 4,
     notes: 'கடை வாசலில் வைக்கவும்',
+    startDate: '2026-10-01',
+    registeredAt: '2026-10-01T00:00:00.000Z',
     status: 'ACTIVE'
   },
   {
@@ -65,6 +73,8 @@ let inMemoryCustomers = [
     ratePerLitre: 56,
     routeOrder: 5,
     notes: 'கூகுள் பே மூலம் மாதாந்திர கட்டணம் செலுத்துவார்',
+    startDate: '2026-10-01',
+    registeredAt: '2026-10-01T00:00:00.000Z',
     status: 'ACTIVE'
   }
 ];
@@ -96,12 +106,13 @@ export default function handler(req, res) {
   if (req.method === 'POST') {
     try {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-      const { id, name, houseNo, street, phone, defaultMorningQty, defaultEveningQty, ratePerLitre, notes } = body;
+      const { id, name, houseNo, street, phone, defaultMorningQty, defaultEveningQty, ratePerLitre, notes, startDate, registeredAt } = body;
 
       if (!name || !phone) {
         return res.status(400).json({ success: false, message: 'Name and phone are required' });
       }
 
+      const todayStr = new Date().toISOString().split('T')[0];
       const existingIndex = inMemoryCustomers.findIndex(c => c.id === id || c.phone.replace(/[^0-9]/g, '') === phone.replace(/[^0-9]/g, ''));
       const customerData = {
         id: id || `cust_${Date.now()}`,
@@ -114,6 +125,8 @@ export default function handler(req, res) {
         ratePerLitre: Number(ratePerLitre) || 56,
         routeOrder: existingIndex >= 0 ? inMemoryCustomers[existingIndex].routeOrder : inMemoryCustomers.length + 1,
         notes: notes || '',
+        startDate: startDate || (existingIndex >= 0 && inMemoryCustomers[existingIndex].startDate) || todayStr,
+        registeredAt: registeredAt || (existingIndex >= 0 && inMemoryCustomers[existingIndex].registeredAt) || new Date().toISOString(),
         status: 'ACTIVE',
         updatedAt: new Date().toISOString()
       };

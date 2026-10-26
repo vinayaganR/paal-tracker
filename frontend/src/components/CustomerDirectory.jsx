@@ -19,6 +19,7 @@ export default function CustomerDirectory() {
   const [search, setSearch] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
+  const todayStr = new Date().toISOString().split('T')[0];
 
   const initialForm = {
     name: '',
@@ -30,6 +31,7 @@ export default function CustomerDirectory() {
     ratePerLitre: 56,
     routeOrder: 1,
     notes: '',
+    startDate: todayStr,
   };
 
   const [formData, setFormData] = useState(initialForm);
@@ -54,7 +56,8 @@ export default function CustomerDirectory() {
     setEditingCustomer(null);
     setFormData({
       ...initialForm,
-      routeOrder: customers.length + 1
+      routeOrder: customers.length + 1,
+      startDate: todayStr
     });
     setIsEditing(true);
   };
@@ -71,6 +74,7 @@ export default function CustomerDirectory() {
       ratePerLitre: cust.ratePerLitre || 56,
       routeOrder: cust.routeOrder || 1,
       notes: cust.notes || '',
+      startDate: cust.startDate || (cust.registeredAt ? cust.registeredAt.split('T')[0] : todayStr),
     });
     setIsEditing(true);
   };
@@ -96,6 +100,8 @@ export default function CustomerDirectory() {
       defaultEveningQty: parseFloat(formData.defaultEveningQty) || 0,
       ratePerLitre: parseFloat(formData.ratePerLitre) || 56,
       routeOrder: parseInt(formData.routeOrder) || 1,
+      startDate: formData.startDate || editingCustomer?.startDate || todayStr,
+      registeredAt: editingCustomer?.registeredAt || new Date().toISOString()
     };
 
     dairyService.saveCustomer(payload);
@@ -364,6 +370,19 @@ export default function CustomerDirectory() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-bold text-slate-700 block mb-1">
+                    {lang === 'ta' ? 'பால் தொடங்கும் தேதி (Start Date)' : 'Start Date'} *
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={formData.startDate || todayStr}
+                    onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">
                     {t('routeOrder')}
                   </label>
                   <input
@@ -373,19 +392,19 @@ export default function CustomerDirectory() {
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold"
                   />
                 </div>
+              </div>
 
-                <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
-                    {t('deliveryNotes')}
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.notes}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    placeholder={lang === 'ta' ? 'டெலிவரி குறிப்புகள் உள்ளிடவும் (விருப்பத்தேர்வு)' : 'Enter delivery instructions (optional)'}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold"
-                  />
-                </div>
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">
+                  {t('deliveryNotes')}
+                </label>
+                <input
+                  type="text"
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  placeholder={lang === 'ta' ? 'டெலிவரி குறிப்புகள் உள்ளிடவும் (விருப்பத்தேர்வு)' : 'Enter delivery instructions (optional)'}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold"
+                />
               </div>
 
               <div className="flex items-center justify-end space-x-2 pt-3 border-t">

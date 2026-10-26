@@ -16,6 +16,8 @@ const INITIAL_CUSTOMERS = [
     ratePerLitre: 56,
     routeOrder: 1,
     notes: 'கேட்டில் உள்ள பாத்திரத்தில் ஊற்றவும் (Leave in gate can)',
+    startDate: '2026-10-01',
+    registeredAt: '2026-10-01T00:00:00.000Z',
     status: 'ACTIVE'
   },
   {
@@ -29,6 +31,8 @@ const INITIAL_CUSTOMERS = [
     ratePerLitre: 56,
     routeOrder: 2,
     notes: 'மணி அடிக்கவும் (Ring bell)',
+    startDate: '2026-10-01',
+    registeredAt: '2026-10-01T00:00:00.000Z',
     status: 'ACTIVE'
   },
   {
@@ -42,6 +46,8 @@ const INITIAL_CUSTOMERS = [
     ratePerLitre: 56,
     routeOrder: 3,
     notes: 'பூனை வராதபடி மூடி வைக்கவும்',
+    startDate: '2026-10-01',
+    registeredAt: '2026-10-01T00:00:00.000Z',
     status: 'ACTIVE'
   },
   {
@@ -55,6 +61,8 @@ const INITIAL_CUSTOMERS = [
     ratePerLitre: 54, // Discounted bulk rate
     routeOrder: 4,
     notes: 'கடை வாசலில் வைக்கவும்',
+    startDate: '2026-10-01',
+    registeredAt: '2026-10-01T00:00:00.000Z',
     status: 'ACTIVE'
   },
   {
@@ -68,6 +76,8 @@ const INITIAL_CUSTOMERS = [
     ratePerLitre: 56,
     routeOrder: 5,
     notes: 'கூகுள் பே மூலம் மாதாந்திர கட்டணம் செலுத்துவார்',
+    startDate: '2026-10-01',
+    registeredAt: '2026-10-01T00:00:00.000Z',
     status: 'ACTIVE'
   }
 ];
@@ -99,21 +109,29 @@ export const dairyService = {
       if (serverList && serverList.length > 0) {
         const local = dairyService.getCustomers();
         const map = new Map();
+        const todayStr = new Date().toISOString().split('T')[0];
+
         local.forEach(c => {
+          if (!c.startDate) {
+            const isDemo = ['cust_1', 'cust_2', 'cust_3', 'cust_4', 'cust_5'].includes(c.id);
+            c.startDate = isDemo ? '2026-10-01' : (c.registeredAt ? c.registeredAt.split('T')[0] : (c.id?.startsWith('cust_') && !isNaN(parseInt(c.id.replace('cust_', ''))) && parseInt(c.id.replace('cust_', '')) > 1600000000000 ? new Date(parseInt(c.id.replace('cust_', ''))).toISOString().split('T')[0] : todayStr));
+          }
           if (c.id) map.set(c.id, c);
         });
+
         serverList.forEach(sc => {
           const item = typeof sc === 'string' ? JSON.parse(sc) : sc;
           if (item?.id) {
             const existing = map.get(item.id);
-            map.set(item.id, { ...existing, ...item });
+            const resolvedStart = item.startDate || existing?.startDate || (item.registeredAt ? item.registeredAt.split('T')[0] : (existing?.registeredAt ? existing.registeredAt.split('T')[0] : todayStr));
+            map.set(item.id, { ...existing, ...item, startDate: resolvedStart });
           } else if (item?.phone) {
             const match = Array.from(map.values()).find(c => c.phone && c.phone.replace(/[^0-9]/g, '') === item.phone.replace(/[^0-9]/g, ''));
             if (match) {
-              map.set(match.id, { ...match, ...item });
+              map.set(match.id, { ...match, ...item, startDate: item.startDate || match.startDate || todayStr });
             } else {
               const newId = `cust_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
-              map.set(newId, { ...item, id: newId });
+              map.set(newId, { ...item, id: newId, startDate: item.startDate || todayStr });
             }
           }
         });
@@ -133,14 +151,24 @@ export const dairyService = {
     const index = list.findIndex(c => c.id === customer.id);
     let updated;
     let savedCustomer;
+    const todayStr = new Date().toISOString().split('T')[0];
+
     if (index >= 0) {
+      const prev = list[index];
+      savedCustomer = {
+        ...prev,
+        ...customer,
+        startDate: customer.startDate || prev.startDate || (prev.registeredAt ? prev.registeredAt.split('T')[0] : todayStr),
+        registeredAt: prev.registeredAt || customer.registeredAt || new Date().toISOString()
+      };
       updated = [...list];
-      updated[index] = customer;
-      savedCustomer = customer;
+      updated[index] = savedCustomer;
     } else {
       savedCustomer = {
         ...customer,
         id: customer.id || `cust_${Date.now()}`,
+        startDate: customer.startDate || (customer.registeredAt ? customer.registeredAt.split('T')[0] : todayStr),
+        registeredAt: customer.registeredAt || new Date().toISOString(),
         routeOrder: customer.routeOrder || list.length + 1,
         status: 'ACTIVE'
       };
@@ -187,6 +215,7 @@ export const dairyService = {
       return { success: false, error: 'PHONE_EXISTS', message: 'இந்த தொலைபேசி எண் ஏற்கனவே பதிவு செய்யப்பட்டுள்ளது (Phone number already registered)' };
     }
 
+    const todayStr = new Date().toISOString().split('T')[0];
     const newCustomer = {
       id: `cust_${Date.now()}`,
       name: newCustomerData.name?.trim() || 'புதிய வாடிக்கையாளர்',
@@ -198,8 +227,9 @@ export const dairyService = {
       ratePerLitre: Number(newCustomerData.ratePerLitre) || 56,
       routeOrder: list.length + 1,
       notes: newCustomerData.notes || 'புதிய ஆன்லைன் பதிவு',
-      status: 'ACTIVE',
-      registeredAt: new Date().toISOString()
+      startDate: newCustomerData.startDate || todayStr,
+      registeredAt: new Date().toISOString(),
+      status: 'ACTIVE'
     };
 
     dairyService.saveCustomer(newCustomer);
@@ -230,8 +260,14 @@ export const dairyService = {
     // Get any active vacation/leave pauses for this customer on this date
     const vacationList = dairyService.getVacationList();
 
-    // Map each customer to a delivery row
-    return customers.map(cust => {
+    // Map each customer to a delivery row (filter out if customer had not yet started on this past date)
+    return customers
+      .filter(cust => {
+        const custStart = cust.startDate || (cust.registeredAt ? cust.registeredAt.split('T')[0] : null);
+        if (custStart && dateStr < custStart) return false;
+        return true;
+      })
+      .map(cust => {
       const activeVacation = vacationList.find(v => 
         v.customerId === cust.id && 
         v.date === dateStr && 
@@ -777,6 +813,7 @@ export const dairyService = {
     const customers = dairyService.getCustomers();
     const [year, month] = monthStr.split('-').map(Number);
     const daysInMonth = new Date(year, month, 0).getDate();
+    const todayStr = new Date().toISOString().split('T')[0];
 
     // Payments store: key `paal_vandi_payments_YYYY_MM`
     const paymentsKey = `paal_vandi_payments_${monthStr}`;
@@ -788,9 +825,39 @@ export const dairyService = {
       let skippedDays = 0;
       const dailyBreakdown = [];
 
+      // Determine customer's actual start/joining date
+      let customerStartDate = cust.startDate;
+      if (!customerStartDate) {
+        if (cust.registeredAt) {
+          customerStartDate = cust.registeredAt.split('T')[0];
+        } else if (cust.id && cust.id.startsWith('cust_') && cust.id.length > 10) {
+          const ts = parseInt(cust.id.replace('cust_', ''), 10);
+          if (!isNaN(ts) && ts > 1600000000000) {
+            customerStartDate = new Date(ts).toISOString().split('T')[0];
+          }
+        }
+      }
+      if (!customerStartDate) {
+        const isDemo = ['cust_1', 'cust_2', 'cust_3', 'cust_4', 'cust_5'].includes(cust.id);
+        customerStartDate = isDemo ? `${monthStr}-01` : todayStr;
+      }
+
       for (let day = 1; day <= daysInMonth; day++) {
         const dayStr = `${monthStr}-${String(day).padStart(2, '0')}`;
-        
+
+        // 1. If day is before customer joined, skip delivery count
+        if (dayStr < customerStartDate) {
+          dailyBreakdown.push({
+            date: dayStr,
+            day,
+            litres: 0,
+            morningLitres: 0,
+            eveningLitres: 0,
+            status: 'NO_SCHEDULE',
+          });
+          continue;
+        }
+
         // Morning
         const mKey = `paal_vandi_deliveries_${dayStr}_MORNING`;
         const mSaved = JSON.parse(localStorage.getItem(mKey) || '{}');
@@ -804,7 +871,7 @@ export const dairyService = {
         let dayLitres = 0;
         let dayStatus = 'NO_SCHEDULE';
 
-        // Check if there was delivery
+        // Check if there was recorded delivery
         const mQty = (mRecord && mRecord.status === 'DELIVERED') ? Number(mRecord.litres || 0) : 0;
         const eQty = (eRecord && eRecord.status === 'DELIVERED') ? Number(eRecord.litres || 0) : 0;
         dayLitres = mQty + eQty;
@@ -819,15 +886,20 @@ export const dairyService = {
           dayStatus = 'SKIPPED';
           skippedDays++;
         } else {
-          // If in the future or no delivery logged yet, check defaults
-          const todayStr = new Date().toISOString().split('T')[0];
-          if (dayStr <= todayStr && (cust.defaultMorningQty > 0 || cust.defaultEveningQty > 0)) {
-            // Unmarked past day - treat as delivered for ledger estimate if not skipped
+          // If in the past relative to today (between customerStartDate and todayStr)
+          if (dayStr < todayStr && (cust.defaultMorningQty > 0 || cust.defaultEveningQty > 0)) {
             const estQty = (cust.defaultMorningQty || 0) + (cust.defaultEveningQty || 0);
             dayLitres = estQty;
             totalLitres += dayLitres;
             deliveredDays++;
             dayStatus = 'DELIVERED';
+          } else if (dayStr === todayStr) {
+            // For today: check if marked delivered
+            if ((mRecord && mRecord.status === 'DELIVERED') || (eRecord && eRecord.status === 'DELIVERED')) {
+              dayStatus = 'DELIVERED';
+            } else {
+              dayStatus = 'PENDING';
+            }
           }
         }
 
