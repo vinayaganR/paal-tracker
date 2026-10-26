@@ -1,11 +1,9 @@
-import { Capacitor } from '@capacitor/core';
-import { PushNotifications } from '@capacitor/push-notifications';
-import { LocalNotifications } from '@capacitor/local-notifications';
+// PaalVandi Web Notification & Real-Time Sync Service
+// Uses Web Notification API, Web Audio API chime, and Cloud Polling
 import { db, isRealFirebase } from '../config/firebase';
 import { doc, setDoc, updateDoc } from 'firebase/firestore';
 import { getApiBaseUrl } from '../config/apiConfig';
 
-const NOTIFICATION_CHANNEL_ID = 'paal_vandi_orders';
 let isInitialized = false;
 let currentDeviceToken = null;
 let pollInterval = null;
@@ -13,19 +11,14 @@ const processedNotificationIds = new Set();
 let lastKnownTimestamp = new Date(Date.now() - 3600000).toISOString();
 
 export const notificationService = {
-  // Initialize notification permissions, channels, and listeners
+  // Initialize notification permissions and cloud sync
   init: async (currentUser, onNotificationTap = null) => {
     if (!currentUser) return;
 
     try {
-      if (Capacitor.isNativePlatform()) {
-        await notificationService.setupNativeChannels();
-        await notificationService.setupNativePush(currentUser, onNotificationTap);
-      } else {
-        await notificationService.setupWebNotifications(currentUser);
-      }
+      await notificationService.setupWebNotifications(currentUser);
 
-      // Start cross-device cloud sync poller (works across separate phones even without live FCM keys)
+      // Start cross-device cloud sync poller (works across separate phones/browsers)
       notificationService.startCloudSyncPoller(currentUser);
       isInitialized = true;
     } catch (e) {
@@ -33,120 +26,12 @@ export const notificationService = {
     }
   },
 
-  // Setup Android notification channel with high priority and sound
-  setupNativeChannels: async () => {
-    try {
-      await LocalNotifications.createChannel({
-        id: NOTIFICATION_CHANNEL_ID,
-        name: 'PaalVandi Orders & Alerts',
-        description: 'Instant alerts for extra milk orders and leave requests',
-        importance: 5, // High importance (heads-up notification)
-        visibility: 1,
-        vibration: true,
-        lights: true,
-        lightColor: '#10B981',
-        sound: 'default'
-      });
-    } catch (err) {
-      console.warn('Channel creation error:', err);
-    }
-  },
-
-  // Setup Native Push & Local Notifications with total crash protection
-  setupNativePush: async (currentUser, onNotificationTap) => {
-    // 1. Setup Local Notifications first (100% stable, no Google Play/Firebase dependency)
-    try {
-      if (Capacitor.isPluginAvailable('LocalNotifications')) {
-        await LocalNotifications.requestPermissions().catch(() => {});
-        await LocalNotifications.removeAllListeners().catch(() => {});
-        LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
-          try {
-            const data = action?.notification?.extra;
-            if (onNotificationTap && typeof onNotificationTap === 'function') {
-              onNotificationTap(data);
-            }
-          } catch (e) {}
-        });
-      }
-    } catch (err) {
-      console.warn('Local notifications init note:', err);
-    }
-
-    // Default fallback token in case PushNotifications is unavailable
-    const fallbackToken = `android_device_${Date.now()}`;
-    currentDeviceToken = fallbackToken;
-    notificationService.saveDeviceToken(fallbackToken, currentUser, 'android');
-
-    // 2. Setup Remote Push Notifications defensively
-    try {
-      if (Capacitor.isPluginAvailable('PushNotifications')) {
-        await PushNotifications.removeAllListeners().catch(() => {});
-
-        // Listen for FCM token registration
-        PushNotifications.addListener('registration', (token) => {
-          try {
-            if (token?.value) {
-              console.log('📲 FCM Token received:', token.value);
-              currentDeviceToken = token.value;
-              notificationService.saveDeviceToken(token.value, currentUser, 'android');
-            }
-          } catch (e) {}
-        });
-
-        PushNotifications.addListener('registrationError', (error) => {
-          console.warn('FCM registration error (handled safely):', error);
-        });
-
-        // Listen for incoming notifications when app is in FOREGROUND
-        PushNotifications.addListener('pushNotificationReceived', async (notification) => {
-          try {
-            console.log('🔔 Push notification received:', notification);
-            await notificationService.showLocalNotification({
-              title: notification.title || '🥛 PaalVandi Alert',
-              body: notification.body || '',
-              data: notification.data || {}
-            });
-            notificationService.dispatchInAppEvent(notification.data);
-          } catch (e) {}
-        });
-
-        // Listen for notification TAPPED by user in notification tray
-        PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
-          try {
-            console.log('👉 Push notification tapped:', action);
-            const data = action?.notification?.data;
-            if (onNotificationTap && typeof onNotificationTap === 'function') {
-              onNotificationTap(data);
-            } else if (data?.url) {
-              window.location.href = data.url;
-            }
-          } catch (e) {}
-        });
-
-        // Check & request remote push permissions safely
-        let permStatus = await PushNotifications.checkPermissions().catch(() => ({ receive: 'prompt' }));
-        if (permStatus?.receive !== 'granted') {
-          permStatus = await PushNotifications.requestPermissions().catch(() => ({ receive: 'denied' }));
-        }
-
-        if (permStatus?.receive === 'granted') {
-          // Wrap register in safe catch so missing Google Play Services never crashes the process
-          await PushNotifications.register().catch(err => {
-            console.warn('Push register notice (safely bypassed):', err);
-          });
-        }
-      }
-    } catch (err) {
-      console.warn('Native push setup notice (safely caught):', err);
-    }
-  },
-
-  // Web Browser / PWA Notification Setup
+  // Setup Browser Notifications
   setupWebNotifications: async (currentUser) => {
     try {
-      if ('Notification' in window) {
+      if (typeof window !== 'undefined' && 'Notification' in window) {
         if (Notification.permission === 'default') {
-          await Notification.requestPermission();
+          await Notification.requestPermission().catch(() => {});
         }
       }
 
@@ -164,7 +49,7 @@ export const notificationService = {
   },
 
   // Save device token to Firestore and Backend Server
-  saveDeviceToken: async (token, currentUser, platform = 'android') => {
+  saveDeviceToken: async (token, currentUser, platform = 'web') => {
     if (!token || !currentUser) return;
 
     const userId = currentUser.role === 'ADMIN' 
@@ -190,7 +75,6 @@ export const notificationService = {
       try {
         const tokenRef = doc(db, 'device_tokens', token);
         await setDoc(tokenRef, tokenData, { merge: true });
-        console.log('✅ Token saved to Firestore:', tokenData.role, tokenData.userId);
       } catch (e) {
         console.warn('Firestore token save note:', e.message);
       }
@@ -263,29 +147,13 @@ export const notificationService = {
     } catch (e) {}
   },
 
-  // Show a local notification on the phone / browser with sound & vibration
+  // Show a notification on the web browser with sound chime
   showLocalNotification: async ({ title, body, data = {} }) => {
     try {
       // Always play audio chime on web
       notificationService.playAudioChime();
 
-      if (Capacitor.isNativePlatform()) {
-        const notifId = Math.floor(Math.random() * 1000000);
-        await LocalNotifications.schedule({
-          notifications: [
-            {
-              id: notifId,
-              title,
-              body,
-              channelId: NOTIFICATION_CHANNEL_ID,
-              sound: 'default',
-              smallIcon: 'ic_launcher',
-              extra: data,
-              schedule: { at: new Date(Date.now() + 100) }
-            }
-          ]
-        });
-      } else if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
         new Notification(title, {
           body,
           icon: '/cow-transparent.png',
@@ -293,11 +161,11 @@ export const notificationService = {
         });
       }
     } catch (err) {
-      console.warn('Local notification error:', err);
+      console.warn('Notification error:', err);
     }
   },
 
-  // Trigger cross-device push notification
+  // Trigger cross-device push notification via backend API
   sendPushNotification: async ({ targetRole, targetUserId, title, body, type, payload }) => {
     try {
       const payloadData = {
@@ -309,7 +177,6 @@ export const notificationService = {
         payload
       };
 
-      // 1. Post to Serverless Push Dispatcher
       const baseUrl = getApiBaseUrl();
       await fetch(`${baseUrl}/api/send-notification`, {
         method: 'POST',
@@ -343,7 +210,7 @@ export const notificationService = {
               lastKnownTimestamp = item.timestamp;
             }
 
-            // Display heads-up local notification on device
+            // Display heads-up notification with audio chime
             await notificationService.showLocalNotification({
               title: item.title,
               body: item.message,

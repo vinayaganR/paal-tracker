@@ -1,8 +1,0 @@
-{
-  "appId": "com.paalvandi.app",
-  "appName": "PaalVandi",
-  "webDir": "dist",
-  "server": {
-    "androidScheme": "https"
-  }
-}
