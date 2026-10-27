@@ -68,8 +68,8 @@ export default function LoginPage() {
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
-  // Owner Submit (Password or OTP)
-  const handleOwnerSubmit = (e) => {
+  // Owner Submit (Password or OTP) with server-side authentication
+  const handleOwnerSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
     setSuccessMsg('');
@@ -79,7 +79,7 @@ export default function LoginPage() {
         setErrorMsg(t('enterOtpLabel'));
         return;
       }
-      const res = loginAsOwner(ownerPhone, ownerOtp, true);
+      const res = await loginAsOwner(ownerPhone, ownerOtp, true);
       if (!res.success) {
         setErrorMsg(t('invalidOtp'));
       } else {
@@ -90,7 +90,7 @@ export default function LoginPage() {
         setErrorMsg(t('enterPin'));
         return;
       }
-      const res = loginAsOwner(ownerPhone, ownerPassword, false);
+      const res = await loginAsOwner(ownerPhone, ownerPassword, false);
       if (!res.success) {
         if (res.error === 'INVALID_OWNER_PHONE') {
           setErrorMsg(t('invalidOwnerPhone'));

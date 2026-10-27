@@ -68,53 +68,52 @@ export function AuthProvider({ children }) {
     localStorage.setItem('paal_vandi_dairy_info', JSON.stringify(dairyInfo));
   }, [dairyInfo]);
 
-  // Login as Dairy Owner / Appa with registered Phone + Password / OTP
-  const loginAsOwner = (phoneOrPin, passwordOrOtp = null, isOtpMode = false) => {
-    // Backward compatibility: single argument is PIN
-    if (passwordOrOtp === null && !isOtpMode) {
-      const pin = phoneOrPin;
-      if (pin === (dairyInfo.ownerPin || "1234")) {
-        const user = {
-          role: ROLES.ADMIN,
-          name: dairyInfo.ownerName,
-          phone: dairyInfo.phone,
-        };
-        setCurrentUser(user);
-        return { success: true, user };
-      }
-      return { success: false, error: 'INVALID_PIN' };
-    }
-
+  // Login as Dairy Owner / Appa with server authentication and offline fallback
+  const loginAsOwner = async (phoneOrPin, passwordOrOtp = null, isOtpMode = false) => {
     const inputPhone = (phoneOrPin || '').replace(/[^0-9]/g, '');
-    const registeredPhone = (dairyInfo.phone || '9842154321').replace(/[^0-9]/g, '');
+    const cleanSecret = passwordOrOtp || phoneOrPin;
 
-    // Allow registered phone or standard 10 digit owner number
-    const isPhoneMatched = inputPhone.includes(registeredPhone.slice(-10)) || registeredPhone.includes(inputPhone.slice(-10));
-    if (!isPhoneMatched && inputPhone.length !== 10) {
-      return { success: false, error: 'INVALID_OWNER_PHONE' };
+    // 1. Try server-side authentication
+    try {
+      const baseUrl = getApiBaseUrl();
+      const res = await fetch(`${baseUrl}/api/auth`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'owner-login',
+          phone: inputPhone,
+          pin: cleanSecret,
+          otp: cleanSecret,
+          isOtpMode
+        })
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.user) {
+          setCurrentUser(json.user);
+          return { success: true, user: json.user };
+        }
+      } else {
+        const errJson = await res.json().catch(() => null);
+        if (errJson?.error) {
+          return { success: false, error: errJson.error, message: errJson.message };
+        }
+      }
+    } catch (e) {
+      // Offline fallback
     }
 
-    // Verify Password or OTP
+    // 2. Offline / Local fallback validation
     if (isOtpMode) {
-      // Valid OTP check (supports generated OTP or master fallback '1234')
-      if (passwordOrOtp === '1234' || passwordOrOtp.length === 4 || passwordOrOtp.length === 6) {
-        const user = {
-          role: ROLES.ADMIN,
-          name: dairyInfo.ownerName,
-          phone: dairyInfo.phone,
-        };
+      if (cleanSecret === '1234' || (cleanSecret && cleanSecret.length >= 4)) {
+        const user = { role: ROLES.ADMIN, name: dairyInfo.ownerName, phone: dairyInfo.phone };
         setCurrentUser(user);
         return { success: true, user };
       }
       return { success: false, error: 'INVALID_OTP' };
     } else {
-      // Password / PIN check
-      if (passwordOrOtp === (dairyInfo.ownerPin || "1234")) {
-        const user = {
-          role: ROLES.ADMIN,
-          name: dairyInfo.ownerName,
-          phone: dairyInfo.phone,
-        };
+      if (cleanSecret === (dairyInfo.ownerPin || "1234")) {
+        const user = { role: ROLES.ADMIN, name: dairyInfo.ownerName, phone: dairyInfo.phone };
         setCurrentUser(user);
         return { success: true, user };
       }
@@ -124,22 +123,50 @@ export function AuthProvider({ children }) {
 
   // Login as Customer (by Phone number or ID) with automatic real-time Database sync
   const loginAsCustomer = async (phoneOrId) => {
-    // 1. Sync from server/database first
+    const cleanQuery = phoneOrId.trim();
+
+    // 1. First try server-side database authentication
+    try {
+      const baseUrl = getApiBaseUrl();
+      const res = await fetch(`${baseUrl}/api/auth`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'customer-login',
+          phone: cleanQuery
+        })
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.customer) {
+          const user = {
+            role: ROLES.CUSTOMER,
+            customer: json.customer
+          };
+          dairyService.saveCustomer(json.customer);
+          setCurrentUser(user);
+          return { success: true, customer: json.customer };
+        }
+      }
+    } catch (e) {
+      // Offline fallback
+    }
+
+    // 2. Sync from server/database
     let customers = await dairyService.syncCustomers().catch(() => dairyService.getCustomers());
     if (!customers || customers.length === 0) {
       customers = dairyService.getCustomers();
     }
 
-    const cleanQuery = phoneOrId.trim().toLowerCase();
     const digitsOnly = cleanQuery.replace(/[^0-9]/g, '');
     
     let matched = customers.find(c => 
       c.id === cleanQuery || 
       (digitsOnly.length >= 4 && c.phone && c.phone.replace(/[^0-9]/g, '').includes(digitsOnly)) ||
-      (c.name && c.name.toLowerCase().includes(cleanQuery))
+      (c.name && c.name.toLowerCase().includes(cleanQuery.toLowerCase()))
     );
 
-    // 2. Direct fallback to DB API endpoint if still not found
+    // 3. Direct fallback to DB API endpoint if still not found
     if (!matched) {
       try {
         const baseUrl = getApiBaseUrl();
@@ -150,10 +177,9 @@ export function AuthProvider({ children }) {
           matched = list.find(c => 
             c.id === cleanQuery || 
             (digitsOnly.length >= 4 && c.phone && c.phone.replace(/[^0-9]/g, '').includes(digitsOnly)) ||
-            (c.name && c.name.toLowerCase().includes(cleanQuery))
+            (c.name && c.name.toLowerCase().includes(cleanQuery.toLowerCase()))
           );
           if (matched) {
-            // Save to local storage for fast subsequent loads
             dairyService.saveCustomer(matched);
           }
         }

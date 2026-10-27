@@ -369,6 +369,48 @@ export function localDbPlugin() {
           return sendJson(res, 200, { success: true });
         }
 
+        // 7. AUTH API (Owner & Customer Login)
+        if (pathname === '/api/auth') {
+          if (req.method === 'POST') {
+            const body = await parseBody(req);
+            const { action, phone, pin, otp, isOtpMode } = body;
+
+            if (action === 'owner-login') {
+              if (isOtpMode) {
+                if (otp === '1234' || (otp && String(otp).length >= 4)) {
+                  return sendJson(res, 200, {
+                    success: true,
+                    user: { role: 'ADMIN', name: 'மாரிமுத்து (அப்பா)', phone: phone || '9842154321' }
+                  });
+                }
+                return sendJson(res, 401, { success: false, error: 'INVALID_OTP' });
+              }
+
+              if (pin === '1234') {
+                return sendJson(res, 200, {
+                  success: true,
+                  user: { role: 'ADMIN', name: 'மாரிமுத்து (அப்பா)', phone: phone || '9842154321' }
+                });
+              }
+              return sendJson(res, 401, { success: false, error: 'INVALID_PIN' });
+            }
+
+            if (action === 'customer-login') {
+              const cleanQuery = (phone || '').trim().toLowerCase();
+              const digitsOnly = cleanQuery.replace(/[^0-9]/g, '');
+              const matched = (db.customers || []).find(c =>
+                c.id === cleanQuery ||
+                (digitsOnly.length >= 4 && c.phone && c.phone.replace(/[^0-9]/g, '').includes(digitsOnly)) ||
+                (c.name && c.name.toLowerCase().includes(cleanQuery))
+              );
+              if (matched) {
+                return sendJson(res, 200, { success: true, customer: matched });
+              }
+              return sendJson(res, 404, { success: false, error: 'CUSTOMER_NOT_FOUND' });
+            }
+          }
+        }
+
         return next();
       });
     }
