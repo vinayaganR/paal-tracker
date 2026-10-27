@@ -76,7 +76,7 @@
       "status": "ACTIVE"
     },
     {
-      "id": "cust_test_1793083445952",
+      "id": "cust_test_1793084537824",
       "name": "கண்ணன் (Kannan Test)",
       "houseNo": "77/B",
       "street": "காந்தி சாலை (Gandhi Salai)",
@@ -84,10 +84,10 @@
       "defaultMorningQty": 2,
       "defaultEveningQty": 0.5,
       "ratePerLitre": 56,
-      "routeOrder": 6,
+      "routeOrder": 7,
       "notes": "Updated milk quantity to 2 Litres",
       "startDate": "2026-10-27",
-      "registeredAt": "2026-10-27T06:44:05.952Z",
+      "registeredAt": "2026-10-27T07:02:17.837Z",
       "status": "ACTIVE"
     }
   ],
@@ -102,9 +102,35 @@
       "deliveredTime": "06:45 AM",
       "note": "Delivered successfully",
       "updatedAt": "2026-10-27T06:44:05.957Z"
+    },
+    {
+      "date": "2026-10-27",
+      "shift": "MORNING",
+      "customerId": "cust_test_1793084537824",
+      "status": "DELIVERED",
+      "litres": 2,
+      "extraLitres": 0,
+      "deliveredTime": "06:45 AM",
+      "note": "Delivered successfully",
+      "updatedAt": "2026-10-27T07:02:19.141Z"
     }
   ],
   "extraRequests": [
+    {
+      "id": "req_1793084539343",
+      "customerId": "cust_test_1793084537824",
+      "customerName": "கண்ணன் (Kannan Test)",
+      "houseNo": "77/B",
+      "phone": "9876543210",
+      "date": "2026-10-27",
+      "shift": "EVENING",
+      "extraLitres": 1,
+      "reason": "Pooja at home",
+      "status": "ACCEPTED",
+      "vendorNote": "Sure, will deliver in evening",
+      "createdAt": "2026-10-27T07:02:19.344Z",
+      "respondedAt": "2026-10-27T07:02:19.862Z"
+    },
     {
       "id": "req_1793083445959",
       "customerId": "cust_test_1793083445952",
@@ -135,6 +161,21 @@
     }
   ],
   "leaveRequests": [
+    {
+      "id": "leave_1793084539863",
+      "customerId": "cust_test_1793084537824",
+      "customerName": "கண்ணன் (Kannan Test)",
+      "houseNo": "77/B",
+      "phone": "9876543210",
+      "fromDate": "2026-10-27",
+      "toDate": "2026-10-27",
+      "shift": "EVENING",
+      "reason": "Out of station",
+      "status": "ACCEPTED",
+      "vendorNote": "Leave noted",
+      "createdAt": "2026-10-27T07:02:19.863Z",
+      "respondedAt": "2026-10-27T07:02:20.229Z"
+    },
     {
       "id": "leave_1793083445962",
       "customerId": "cust_test_1793083445952",

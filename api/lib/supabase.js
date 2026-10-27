@@ -290,16 +290,39 @@ export const dbService = {
 
     if (isSupabaseConfigured()) {
       try {
-        const dbRow = customerToDb(normalizedCustomer);
-        // Upsert by primary key (id) and update fields on conflict
-        const result = await supabaseFetch('customers', {
-          method: 'POST',
-          headers: { 'Prefer': 'resolution=merge-duplicates,return=representation' },
-          body: JSON.stringify(dbRow)
-        });
-        const saved = Array.isArray(result) && result[0] ? customerFromDb(result[0]) : normalizedCustomer;
-        console.log(`[Supabase] Customer saved successfully: ${saved.name} (${saved.phone})`);
-        return saved;
+        let existing = null;
+        if (cleanPhone) {
+          const rows = await supabaseFetch(`customers?phone=eq.${cleanPhone}&limit=1`).catch(() => null);
+          if (Array.isArray(rows) && rows[0]) existing = rows[0];
+        }
+        if (!existing && cleanId) {
+          const rows = await supabaseFetch(`customers?id=eq.${cleanId}&limit=1`).catch(() => null);
+          if (Array.isArray(rows) && rows[0]) existing = rows[0];
+        }
+
+        if (existing) {
+          normalizedCustomer.id = existing.id;
+          const dbRow = customerToDb(normalizedCustomer);
+          delete dbRow.id;
+          const result = await supabaseFetch(`customers?id=eq.${existing.id}`, {
+            method: 'PATCH',
+            headers: { 'Prefer': 'return=representation' },
+            body: JSON.stringify(dbRow)
+          });
+          const saved = Array.isArray(result) && result[0] ? customerFromDb(result[0]) : normalizedCustomer;
+          console.log(`[Supabase] Customer updated successfully: ${saved.name} (${saved.phone})`);
+          return saved;
+        } else {
+          const dbRow = customerToDb(normalizedCustomer);
+          const result = await supabaseFetch('customers', {
+            method: 'POST',
+            headers: { 'Prefer': 'return=representation' },
+            body: JSON.stringify(dbRow)
+          });
+          const saved = Array.isArray(result) && result[0] ? customerFromDb(result[0]) : normalizedCustomer;
+          console.log(`[Supabase] Customer saved successfully: ${saved.name} (${saved.phone})`);
+          return saved;
+        }
       } catch (err) {
         console.error('[Supabase] saveCustomer error:', err.message);
       }
@@ -415,7 +438,7 @@ export const dbService = {
           updated_at: new Date().toISOString()
         }));
 
-        await supabaseFetch('deliveries', {
+        await supabaseFetch('deliveries?on_conflict=date,shift,customer_id', {
           method: 'POST',
           headers: { 'Prefer': 'resolution=merge-duplicates' },
           body: JSON.stringify(rows)
@@ -523,7 +546,7 @@ export const dbService = {
           created_at: item.createdAt,
           updated_at: new Date().toISOString()
         };
-        await supabaseFetch('extra_requests', {
+        await supabaseFetch('extra_requests?on_conflict=customer_id,date,shift', {
           method: 'POST',
           headers: { 'Prefer': 'resolution=merge-duplicates' },
           body: JSON.stringify(row)
@@ -669,7 +692,7 @@ export const dbService = {
           created_at: item.createdAt,
           updated_at: new Date().toISOString()
         };
-        await supabaseFetch('leave_requests', {
+        await supabaseFetch('leave_requests?on_conflict=customer_id,from_date,to_date,shift', {
           method: 'POST',
           headers: { 'Prefer': 'resolution=merge-duplicates' },
           body: JSON.stringify(row)
