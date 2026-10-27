@@ -31,7 +31,10 @@ export default function BillingLedger() {
   const [showFarmReportModal, setShowFarmReportModal] = useState(false);
   const [activeCustBill, setActiveCustBill] = useState(null);
 
-  const loadLedger = () => {
+  const loadLedger = async () => {
+    try {
+      await dairyService.syncDeliveries(selectedMonth);
+    } catch (e) {}
     const data = dairyService.getMonthLedger(selectedMonth);
     setLedgerData(data);
   };

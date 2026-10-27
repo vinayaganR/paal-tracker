@@ -82,7 +82,10 @@ export default function DeliveryRunner({ selectedDate, selectedShift }) {
     }
   };
 
-  const loadData = () => {
+  const loadData = async () => {
+    try {
+      await dairyService.syncDeliveries();
+    } catch (e) {}
     const data = dairyService.getDailyDeliverySheet(selectedDate, selectedShift);
     setSheet(data);
   };

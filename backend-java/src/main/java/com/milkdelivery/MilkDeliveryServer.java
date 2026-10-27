@@ -48,6 +48,7 @@ public class MilkDeliveryServer {
         server.createContext("/api/billing/demo", new DemoBillingHandler());
         server.createContext("/api/extra-requests", new ExtraRequestsHandler());
         server.createContext("/api/leave-requests", new LeaveRequestsHandler());
+        server.createContext("/api/deliveries", new DeliveriesHandler());
         server.createContext("/api/device-tokens", new DeviceTokensHandler());
         server.createContext("/api/send-notification", new SendNotificationHandler());
 
@@ -366,6 +367,73 @@ public class MilkDeliveryServer {
                 String body = new String(bytes, StandardCharsets.UTF_8);
                 notifications.add(0, body);
                 sendJsonResponse(exchange, 200, "{\"success\":true,\"message\":\"Notification sent\"}");
+                return;
+            }
+            sendJsonResponse(exchange, 405, "{\"error\":\"Method not allowed\"}");
+        }
+    }
+
+    static class DeliveriesHandler implements HttpHandler {
+        private static final java.util.List<String> deliveries = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            String method = exchange.getRequestMethod();
+            if ("OPTIONS".equalsIgnoreCase(method)) {
+                sendJsonResponse(exchange, 200, "{}");
+                return;
+            }
+            if ("GET".equalsIgnoreCase(method)) {
+                String query = exchange.getRequestURI().getQuery();
+                java.util.List<String> filtered = new java.util.ArrayList<>();
+                for (String d : deliveries) {
+                    boolean match = true;
+                    if (query != null) {
+                        for (String param : query.split("&")) {
+                            String[] kv = param.split("=");
+                            if (kv.length == 2) {
+                                String key = kv[0];
+                                String val = kv[1];
+                                if ("date".equals(key) && !d.contains("\"date\":\"" + val + "\"")) match = false;
+                                if ("shift".equals(key) && !d.contains("\"shift\":\"" + val + "\"")) match = false;
+                                if ("customerId".equals(key) && !d.contains("\"customerId\":\"" + val + "\"")) match = false;
+                                if ("month".equals(key) && !d.contains("\"date\":\"" + val)) match = false;
+                            }
+                        }
+                    }
+                    if (match) filtered.add(d);
+                }
+                String json = "{\"success\":true,\"count\":" + filtered.size() + ",\"data\":[" + String.join(",", filtered) + "]}";
+                sendJsonResponse(exchange, 200, json);
+                return;
+            }
+            if ("POST".equalsIgnoreCase(method)) {
+                byte[] bytes = exchange.getRequestBody().readAllBytes();
+                String body = new String(bytes, StandardCharsets.UTF_8);
+                String date = extractJsonField(body, "date");
+                String shift = extractJsonField(body, "shift");
+                String customerId = extractJsonField(body, "customerId");
+
+                if (date != null && shift != null && customerId != null) {
+                    int existingIdx = -1;
+                    for (int i = 0; i < deliveries.size(); i++) {
+                        String d = deliveries.get(i);
+                        if (d.contains("\"date\":\"" + date + "\"") &&
+                            d.contains("\"shift\":\"" + shift + "\"") &&
+                            d.contains("\"customerId\":\"" + customerId + "\"")) {
+                            existingIdx = i;
+                            break;
+                        }
+                    }
+                    if (existingIdx >= 0) {
+                        deliveries.set(existingIdx, body);
+                    } else {
+                        deliveries.add(body);
+                    }
+                } else {
+                    deliveries.add(body);
+                }
+                sendJsonResponse(exchange, 200, "{\"success\":true,\"message\":\"Delivery recorded\"}");
                 return;
             }
             sendJsonResponse(exchange, 405, "{\"error\":\"Method not allowed\"}");

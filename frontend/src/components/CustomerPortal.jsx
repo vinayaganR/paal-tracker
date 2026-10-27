@@ -120,8 +120,11 @@ export default function CustomerPortal() {
     setTimeout(() => setToastMessage(''), 4000);
   };
 
-  const loadData = () => {
+  const loadData = async () => {
     if (!activeCustomer) return;
+    try {
+      await dairyService.syncDeliveries(selectedMonth);
+    } catch (e) {}
     const monthLedger = dairyService.getMonthLedger(selectedMonth);
     const active = monthLedger.find(item => item.customer.id === activeCustomer.id);
     setLedgerItem(active || null);
@@ -145,8 +148,12 @@ export default function CustomerPortal() {
     loadData();
     loadRequests();
 
-    // Subscribe to real-time notifications from vendor (Accept / Reject)
+    // Subscribe to real-time notifications from vendor (Accept / Reject / Delivery)
     const unsubscribe = dairyService.subscribeToNotifications((data) => {
+      if (data.type === 'DELIVERY_UPDATED' && (!data.payload?.customerId || data.payload?.customerId === activeCustomer?.id)) {
+        loadData();
+        showToast(`🥛 ${lang === 'ta' ? 'இன்றைய பால் விநியோகம் செய்யப்பட்டது!' : 'Milk delivery confirmed!'}`);
+      }
       if (data.type === 'EXTRA_REQUEST_RESPONDED' && data.payload?.customerId === activeCustomer?.id) {
         loadRequests();
         loadData();
@@ -174,6 +181,7 @@ export default function CustomerPortal() {
 
     const pollTimer = setInterval(() => {
       loadRequests();
+      loadData();
     }, 10000);
 
     return () => {

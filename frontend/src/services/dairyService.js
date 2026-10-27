@@ -315,7 +315,89 @@ export const dairyService = {
     // Also update overall monthly register index
     dairyService.touchMonthlyRegister(dateStr);
 
+    // Sync to Cloud Server API so all devices/phones receive the update!
+    try {
+      const baseUrl = getApiBaseUrl();
+      fetch(`${baseUrl}/api/deliveries`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          date: dateStr,
+          shift,
+          customerId,
+          status,
+          litres: Number(litres) || 0,
+          extraLitres: Number(extraLitres) || 0,
+          deliveredTime: records[customerId].deliveredTime,
+          note: note || '',
+          updatedAt: records[customerId].updatedAt
+        })
+      }).catch(() => {});
+    } catch (e) {}
+
+    // Broadcast local event to other open tabs
+    dairyService.broadcastEvent('DELIVERY_UPDATED', {
+      date: dateStr,
+      shift,
+      customerId,
+      status,
+      litres: Number(litres) || 0
+    });
+
+    // Send cross-device push notification when marked DELIVERED
+    if (status === 'DELIVERED') {
+      try {
+        notificationService.sendPushNotification({
+          targetRole: 'CUSTOMER',
+          targetUserId: customerId,
+          title: '🥛 இன்றைய பால் விநியோகம் செய்யப்பட்டது!',
+          body: `${dateStr} (${shift === 'MORNING' ? 'காலை' : 'மாலை'}): ${Number(litres) || 0}L பால் வழங்கப்பட்டது. நன்றி!`,
+          type: 'DELIVERY_UPDATED',
+          payload: { date: dateStr, shift, customerId, status, litres }
+        });
+      } catch (err) {}
+    }
+
     return records;
+  },
+
+  // Synchronize deliveries from cloud server
+  syncDeliveries: async (monthStr = null) => {
+    try {
+      const baseUrl = getApiBaseUrl();
+      const query = monthStr ? `?month=${monthStr}` : '';
+      const res = await fetch(`${baseUrl}/api/deliveries${query}`).catch(() => null);
+      if (!res || !res.ok) return;
+      const json = await res.json().catch(() => null);
+      const deliveryList = Array.isArray(json) ? json : (json?.data && Array.isArray(json.data) ? json.data : null);
+      if (!deliveryList || !Array.isArray(deliveryList)) return;
+
+      deliveryList.forEach(item => {
+        const d = typeof item === 'string' ? JSON.parse(item) : item;
+        if (!d?.date || !d?.shift || !d?.customerId) return;
+        const key = `paal_vandi_deliveries_${d.date}_${d.shift}`;
+        const existing = JSON.parse(localStorage.getItem(key) || '{}');
+        const prev = existing[d.customerId];
+
+        const serverTime = d.updatedAt ? new Date(d.updatedAt).getTime() : 0;
+        const localTime = prev?.updatedAt ? new Date(prev.updatedAt).getTime() : 0;
+
+        if (!prev || serverTime >= localTime || (prev.status === 'PENDING' && d.status !== 'PENDING')) {
+          existing[d.customerId] = {
+            status: d.status,
+            litres: Number(d.litres) || 0,
+            extraLitres: Number(d.extraLitres) || 0,
+            deliveredTime: d.deliveredTime || null,
+            note: d.note || '',
+            updatedAt: d.updatedAt || new Date().toISOString()
+          };
+          localStorage.setItem(key, JSON.stringify(existing));
+          dairyService.touchMonthlyRegister(d.date);
+        }
+      });
+    } catch (e) {
+      console.warn('Sync deliveries note:', e);
+    }
   },
 
   // Mark all remaining pending as Delivered with 1-tap
@@ -734,35 +816,90 @@ export const dairyService = {
       const extraData = Array.isArray(extraRes) ? extraRes : (extraRes?.data && Array.isArray(extraRes.data) ? extraRes.data : null);
       if (extraData && Array.isArray(extraData)) {
         const local = dairyService.getExtraMilkRequests();
-        const mergedMap = new Map();
-        local.forEach(r => mergedMap.set(r.id, r));
+        const dedupeMap = new Map();
+        const getExtraKey = (r) => `${r.customerId || ''}_${r.date || ''}_${r.shift || ''}`;
+
+        local.forEach(r => {
+          if (!r) return;
+          const key = getExtraKey(r);
+          dedupeMap.set(key, r);
+        });
+
         extraData.forEach(r => {
           const item = typeof r === 'string' ? JSON.parse(r) : r;
-          if (item?.id) {
-            mergedMap.set(item.id, { ...mergedMap.get(item.id), ...item });
+          if (!item?.customerId) return;
+          const key = getExtraKey(item);
+          const existing = dedupeMap.get(key);
+
+          if (!existing) {
+            dedupeMap.set(key, item);
+          } else {
+            // Priority: Non-PENDING (ACCEPTED or REJECTED) always overrides PENDING!
+            if (existing.status === 'PENDING' && item.status !== 'PENDING') {
+              dedupeMap.set(key, { ...existing, ...item, id: item.id || existing.id });
+            } else if (existing.status !== 'PENDING' && item.status === 'PENDING') {
+              // Keep the decided status!
+            } else {
+              dedupeMap.set(key, { ...existing, ...item });
+            }
           }
         });
-        const merged = Array.from(mergedMap.values()).sort((a,b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
+        const merged = Array.from(dedupeMap.values()).sort((a,b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
         localStorage.setItem('paal_vandi_extra_requests', JSON.stringify(merged));
       }
 
       const leaveData = Array.isArray(leaveRes) ? leaveRes : (leaveRes?.data && Array.isArray(leaveRes.data) ? leaveRes.data : null);
       if (leaveData && Array.isArray(leaveData)) {
         const local = dairyService.getLeaveRequests();
-        const mergedMap = new Map();
-        local.forEach(l => mergedMap.set(l.id, l));
+        const dedupeMap = new Map();
+        const getLeaveKey = (l) => `${l.customerId || ''}_${l.fromDate || ''}_${l.toDate || ''}_${l.shift || 'BOTH'}`;
+
+        local.forEach(l => {
+          if (!l) return;
+          const key = getLeaveKey(l);
+          dedupeMap.set(key, l);
+        });
+
         leaveData.forEach(l => {
           const item = typeof l === 'string' ? JSON.parse(l) : l;
-          if (item?.id) {
-            mergedMap.set(item.id, { ...mergedMap.get(item.id), ...item });
+          if (!item?.customerId) return;
+          const key = getLeaveKey(item);
+          const existing = dedupeMap.get(key);
+
+          if (!existing) {
+            dedupeMap.set(key, item);
+          } else {
+            if (existing.status === 'PENDING' && item.status !== 'PENDING') {
+              dedupeMap.set(key, { ...existing, ...item, id: item.id || existing.id });
+            } else if (existing.status !== 'PENDING' && item.status === 'PENDING') {
+              // Keep decided status
+            } else {
+              dedupeMap.set(key, { ...existing, ...item });
+            }
+          }
+
+          // If accepted leave, ensure vacation pause is registered locally
+          if (item.status === 'ACCEPTED') {
+            dairyService.addVacation(
+              item.customerId,
+              item.fromDate,
+              item.toDate,
+              item.shift || 'BOTH',
+              item.reason
+            );
           }
         });
-        const merged = Array.from(mergedMap.values()).sort((a,b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
+        const merged = Array.from(dedupeMap.values()).sort((a,b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
         localStorage.setItem('paal_vandi_leave_requests', JSON.stringify(merged));
       }
 
-      // Also sync customers together
-      await dairyService.syncCustomers();
+      // Also sync customers and deliveries together
+      await Promise.all([
+        dairyService.syncCustomers(),
+        dairyService.syncDeliveries()
+      ]);
     } catch (e) {
       console.warn('Sync requests note:', e);
     }

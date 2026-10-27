@@ -1,7 +1,12 @@
 // Vercel Serverless Function for Customer Directory Synchronization
 // Ensures new customer registrations sync across multiple devices
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
 
-let inMemoryCustomers = [
+const STORAGE_FILE = path.join(os.tmpdir(), 'paal_vandi_customers.json');
+
+const INITIAL_CUSTOMERS = [
   {
     id: 'cust_1',
     name: 'முத்துசாமி (Muthusamy)',
@@ -79,6 +84,29 @@ let inMemoryCustomers = [
   }
 ];
 
+let inMemoryCustomers = null;
+
+function loadCustomers() {
+  if (inMemoryCustomers && inMemoryCustomers.length > 0) return inMemoryCustomers;
+  try {
+    if (fs.existsSync(STORAGE_FILE)) {
+      const data = fs.readFileSync(STORAGE_FILE, 'utf-8');
+      inMemoryCustomers = JSON.parse(data);
+    }
+  } catch (e) {}
+  if (!inMemoryCustomers || inMemoryCustomers.length === 0) {
+    inMemoryCustomers = [...INITIAL_CUSTOMERS];
+  }
+  return inMemoryCustomers;
+}
+
+function saveCustomers(list) {
+  inMemoryCustomers = list;
+  try {
+    fs.writeFileSync(STORAGE_FILE, JSON.stringify(list), 'utf-8');
+  } catch (e) {}
+}
+
 export default function handler(req, res) {
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -93,12 +121,14 @@ export default function handler(req, res) {
     return;
   }
 
+  const customers = loadCustomers();
+
   // GET: Fetch all customers
   if (req.method === 'GET') {
     return res.status(200).json({
       success: true,
-      count: inMemoryCustomers.length,
-      data: inMemoryCustomers
+      count: customers.length,
+      data: customers
     });
   }
 
@@ -113,9 +143,9 @@ export default function handler(req, res) {
       }
 
       const todayStr = new Date().toISOString().split('T')[0];
-      const existingIndex = inMemoryCustomers.findIndex(c => c.id === id || c.phone.replace(/[^0-9]/g, '') === phone.replace(/[^0-9]/g, ''));
+      const existingIndex = customers.findIndex(c => c.id === id || c.phone.replace(/[^0-9]/g, '') === phone.replace(/[^0-9]/g, ''));
       const customerData = {
-        id: id || `cust_${Date.now()}`,
+        id: id || (existingIndex >= 0 ? customers[existingIndex].id : `cust_${Date.now()}`),
         name,
         houseNo: houseNo || '—',
         street: street || '',
@@ -123,19 +153,20 @@ export default function handler(req, res) {
         defaultMorningQty: Number(defaultMorningQty) || 1.0,
         defaultEveningQty: Number(defaultEveningQty) || 0.0,
         ratePerLitre: Number(ratePerLitre) || 56,
-        routeOrder: existingIndex >= 0 ? inMemoryCustomers[existingIndex].routeOrder : inMemoryCustomers.length + 1,
+        routeOrder: existingIndex >= 0 ? customers[existingIndex].routeOrder : customers.length + 1,
         notes: notes || '',
-        startDate: startDate || (existingIndex >= 0 && inMemoryCustomers[existingIndex].startDate) || todayStr,
-        registeredAt: registeredAt || (existingIndex >= 0 && inMemoryCustomers[existingIndex].registeredAt) || new Date().toISOString(),
+        startDate: startDate || (existingIndex >= 0 && customers[existingIndex].startDate) || todayStr,
+        registeredAt: registeredAt || (existingIndex >= 0 && customers[existingIndex].registeredAt) || new Date().toISOString(),
         status: 'ACTIVE',
         updatedAt: new Date().toISOString()
       };
 
       if (existingIndex >= 0) {
-        inMemoryCustomers[existingIndex] = { ...inMemoryCustomers[existingIndex], ...customerData };
+        customers[existingIndex] = { ...customers[existingIndex], ...customerData };
       } else {
-        inMemoryCustomers.push(customerData);
+        customers.push(customerData);
       }
+      saveCustomers(customers);
 
       return res.status(200).json({
         success: true,
