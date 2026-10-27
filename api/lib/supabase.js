@@ -6,6 +6,30 @@ import path from 'path';
 import os from 'os';
 import crypto from 'crypto';
 
+// Auto-load .env file if running in Node environment
+try {
+  const envPaths = [
+    path.resolve(process.cwd(), '.env'),
+    path.resolve(process.cwd(), '..', '.env'),
+    path.resolve('d:/milkdelivery/.env')
+  ];
+  for (const envPath of envPaths) {
+    if (fs.existsSync(envPath)) {
+      const envContent = fs.readFileSync(envPath, 'utf-8');
+      for (const line of envContent.split('\n')) {
+        const trimmed = line.trim();
+        if (trimmed && !trimmed.startsWith('#') && trimmed.includes('=')) {
+          const [key, ...vals] = trimmed.split('=');
+          const k = key.trim();
+          const v = vals.join('=').trim().replace(/^['"]|['"]$/g, '');
+          if (!process.env[k]) process.env[k] = v;
+        }
+      }
+      break;
+    }
+  }
+} catch (e) {}
+
 // Environment variables for Supabase
 const SUPABASE_URL = (
   process.env.SUPABASE_URL ||
