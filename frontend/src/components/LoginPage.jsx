@@ -31,6 +31,17 @@ export default function LoginPage() {
   const { currentUser, isAdmin, loginAsOwner, loginAsCustomer, registerCustomer, dairyInfo } = useAuth();
   const navigate = useNavigate();
 
+  // Active top tab: 'OWNER' | 'CUSTOMER'
+  const [activeTab, setActiveTab] = useState('OWNER');
+  const [copiedLink, setCopiedLink] = useState(false);
+
+  // Owner state
+  const [ownerPhone, setOwnerPhone] = useState(dairyInfo?.phone ? dairyInfo.phone.replace(/[^0-9]/g, '').slice(-10) : '9842154321');
+  const [ownerPassword, setOwnerPassword] = useState('');
+  const [ownerLoginMode, setOwnerLoginMode] = useState('PASSWORD'); // 'PASSWORD' | 'OTP'
+  const [ownerOtp, setOwnerOtp] = useState('');
+  const [otpSentNotice, setOtpSentNotice] = useState(false);
+
   // Customer state: 'LOGIN' | 'REGISTER'
   const [customerMode, setCustomerMode] = useState('LOGIN');
   const [customerPhone, setCustomerPhone] = useState('');
