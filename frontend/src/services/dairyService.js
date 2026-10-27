@@ -145,8 +145,8 @@ export const dairyService = {
     return dairyService.getCustomers();
   },
 
-  // Save Customer (Add or Update)
-  saveCustomer: (customer) => {
+  // Save Customer (Add or Update) with Database confirmation
+  saveCustomer: async (customer) => {
     const list = dairyService.getCustomers();
     const index = list.findIndex(c => c.id === customer.id);
     let updated;
@@ -176,24 +176,37 @@ export const dairyService = {
     }
     localStorage.setItem('paal_vandi_customers', JSON.stringify(updated));
     
-    // Sync to Backend Server API
+    // Sync to Backend Server Database API
     try {
-      fetch(`${getApiBaseUrl()}/api/customers`, {
+      const baseUrl = getApiBaseUrl();
+      const res = await fetch(`${baseUrl}/api/customers`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(savedCustomer)
-      }).catch(() => {});
-    } catch (e) {}
+      });
+      if (res.ok) {
+        const json = await res.json().catch(() => null);
+        if (json?.data) {
+          savedCustomer = { ...savedCustomer, ...json.data };
+        }
+      }
+    } catch (e) {
+      console.warn('API save customer note:', e);
+    }
 
     // Firestore async sync
     if (isRealFirebase && db) {
       try {
         const docRef = doc(db, 'customers', savedCustomer.id);
-        setDoc(docRef, savedCustomer, { merge: true });
+        await setDoc(docRef, savedCustomer, { merge: true });
       } catch (e) {
         console.warn("Firestore sync error:", e);
       }
     }
+
+    // Broadcast customer event so other open tabs/windows update
+    dairyService.broadcastEvent('CUSTOMER_REGISTERED', savedCustomer);
+
     return updated;
   },
 

@@ -31,25 +31,17 @@ export default function LoginPage() {
   const { currentUser, isAdmin, loginAsOwner, loginAsCustomer, registerCustomer, dairyInfo } = useAuth();
   const navigate = useNavigate();
 
-  // Sync latest customer directory on load
-  useEffect(() => {
-    dairyService.syncCustomers().catch(() => {});
-  }, []);
-
-  // Active top tab: 'OWNER' | 'CUSTOMER'
-  const [activeTab, setActiveTab] = useState('OWNER');
-  const [copiedLink, setCopiedLink] = useState(false);
-
-  // Owner state
-  const [ownerPhone, setOwnerPhone] = useState(dairyInfo?.phone ? dairyInfo.phone.replace(/[^0-9]/g, '').slice(-10) : '9842154321');
-  const [ownerPassword, setOwnerPassword] = useState('');
-  const [ownerLoginMode, setOwnerLoginMode] = useState('PASSWORD'); // 'PASSWORD' | 'OTP'
-  const [ownerOtp, setOwnerOtp] = useState('');
-  const [otpSentNotice, setOtpSentNotice] = useState(false);
-
   // Customer state: 'LOGIN' | 'REGISTER'
   const [customerMode, setCustomerMode] = useState('LOGIN');
   const [customerPhone, setCustomerPhone] = useState('');
+  const [registeredCustomers, setRegisteredCustomers] = useState(() => dairyService.getCustomers());
+
+  // Sync latest customer directory on load from real database
+  useEffect(() => {
+    dairyService.syncCustomers().then(list => {
+      if (list && Array.isArray(list)) setRegisteredCustomers(list);
+    }).catch(() => {});
+  }, []);
   
   // Registration form
   const [regForm, setRegForm] = useState({
@@ -64,8 +56,6 @@ export default function LoginPage() {
 
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
-
-  const registeredCustomers = dairyService.getCustomers();
 
   // Owner Submit (Password or OTP)
   const handleOwnerSubmit = (e) => {
@@ -110,7 +100,7 @@ export default function LoginPage() {
   };
 
   // Customer Login Submit
-  const handleCustomerSubmit = (e) => {
+  const handleCustomerSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
     setSuccessMsg('');
@@ -120,7 +110,7 @@ export default function LoginPage() {
       return;
     }
 
-    const res = loginAsCustomer(customerPhone);
+    const res = await loginAsCustomer(customerPhone);
     if (!res.success) {
       setErrorMsg(t('customerNotFound'));
     } else {

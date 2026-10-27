@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { dairyService } from '../services/dairyService';
 import { notificationService } from '../services/notificationService';
+import { getApiBaseUrl } from '../config/apiConfig';
 
 const AuthContext = createContext();
 
@@ -121,17 +122,43 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // Login as Customer (by Phone number or ID)
-  const loginAsCustomer = (phoneOrId) => {
-    const customers = dairyService.getCustomers();
+  // Login as Customer (by Phone number or ID) with automatic real-time Database sync
+  const loginAsCustomer = async (phoneOrId) => {
+    // 1. Sync from server/database first
+    let customers = await dairyService.syncCustomers().catch(() => dairyService.getCustomers());
+    if (!customers || customers.length === 0) {
+      customers = dairyService.getCustomers();
+    }
+
     const cleanQuery = phoneOrId.trim().toLowerCase();
     const digitsOnly = cleanQuery.replace(/[^0-9]/g, '');
     
-    const matched = customers.find(c => 
+    let matched = customers.find(c => 
       c.id === cleanQuery || 
-      (digitsOnly.length >= 4 && c.phone.replace(/[^0-9]/g, '').includes(digitsOnly)) ||
-      c.name.toLowerCase().includes(cleanQuery)
+      (digitsOnly.length >= 4 && c.phone && c.phone.replace(/[^0-9]/g, '').includes(digitsOnly)) ||
+      (c.name && c.name.toLowerCase().includes(cleanQuery))
     );
+
+    // 2. Direct fallback to DB API endpoint if still not found
+    if (!matched) {
+      try {
+        const baseUrl = getApiBaseUrl();
+        const res = await fetch(`${baseUrl}/api/customers`);
+        if (res.ok) {
+          const json = await res.json();
+          const list = Array.isArray(json) ? json : (json?.data && Array.isArray(json.data) ? json.data : []);
+          matched = list.find(c => 
+            c.id === cleanQuery || 
+            (digitsOnly.length >= 4 && c.phone && c.phone.replace(/[^0-9]/g, '').includes(digitsOnly)) ||
+            (c.name && c.name.toLowerCase().includes(cleanQuery))
+          );
+          if (matched) {
+            // Save to local storage for fast subsequent loads
+            dairyService.saveCustomer(matched);
+          }
+        }
+      } catch (e) {}
+    }
 
     if (matched) {
       const user = {

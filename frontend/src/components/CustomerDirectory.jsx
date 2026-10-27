@@ -86,7 +86,7 @@ export default function CustomerDirectory() {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.name.trim() || !formData.houseNo.trim()) {
       alert(lang === 'ta' ? 'பெயர் மற்றும் கதவு எண் கட்டாயம்!' : 'Name and house number are required!');
@@ -104,9 +104,9 @@ export default function CustomerDirectory() {
       registeredAt: editingCustomer?.registeredAt || new Date().toISOString()
     };
 
-    dairyService.saveCustomer(payload);
+    await dairyService.saveCustomer(payload);
     setIsEditing(false);
-    loadCustomers();
+    await loadCustomers();
   };
 
   const filtered = customers.filter(c => {

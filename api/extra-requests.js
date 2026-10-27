@@ -5,6 +5,11 @@ import path from 'path';
 import os from 'os';
 
 const STORAGE_FILE = path.join(os.tmpdir(), 'paal_vandi_extra_requests.json');
+const DB_FILE = [
+  path.resolve(process.cwd(), 'data', 'db.json'),
+  path.resolve(process.cwd(), '..', 'data', 'db.json'),
+  path.resolve('d:/milkdelivery/data/db.json')
+].find(p => fs.existsSync(p)) || path.resolve(process.cwd(), 'data', 'db.json');
 
 const INITIAL_REQUESTS = [
   {
@@ -25,6 +30,16 @@ const INITIAL_REQUESTS = [
 let inMemoryRequests = null;
 
 function loadRequests() {
+  try {
+    if (fs.existsSync(DB_FILE)) {
+      const db = JSON.parse(fs.readFileSync(DB_FILE, 'utf-8'));
+      if (db.extraRequests && Array.isArray(db.extraRequests)) {
+        inMemoryRequests = db.extraRequests;
+        return inMemoryRequests;
+      }
+    }
+  } catch (e) {}
+
   if (inMemoryRequests && inMemoryRequests.length > 0) return inMemoryRequests;
   try {
     if (fs.existsSync(STORAGE_FILE)) {
@@ -40,6 +55,13 @@ function loadRequests() {
 
 function saveRequests(list) {
   inMemoryRequests = list;
+  try {
+    if (fs.existsSync(DB_FILE)) {
+      const db = JSON.parse(fs.readFileSync(DB_FILE, 'utf-8'));
+      db.extraRequests = list;
+      fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2), 'utf-8');
+    }
+  } catch (e) {}
   try {
     fs.writeFileSync(STORAGE_FILE, JSON.stringify(list), 'utf-8');
   } catch (e) {}

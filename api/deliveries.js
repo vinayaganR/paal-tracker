@@ -5,25 +5,45 @@ import path from 'path';
 import os from 'os';
 
 const STORAGE_FILE = path.join(os.tmpdir(), 'paal_vandi_deliveries.json');
+const DB_FILE = [
+  path.resolve(process.cwd(), 'data', 'db.json'),
+  path.resolve(process.cwd(), '..', 'data', 'db.json'),
+  path.resolve('d:/milkdelivery/data/db.json')
+].find(p => fs.existsSync(p)) || path.resolve(process.cwd(), 'data', 'db.json');
 
 // In-memory cache
 let inMemoryDeliveries = [];
 
 function loadDeliveries() {
+  try {
+    if (fs.existsSync(DB_FILE)) {
+      const db = JSON.parse(fs.readFileSync(DB_FILE, 'utf-8'));
+      if (db.deliveries && Array.isArray(db.deliveries)) {
+        inMemoryDeliveries = db.deliveries;
+        return inMemoryDeliveries;
+      }
+    }
+  } catch (e) {}
+
   if (inMemoryDeliveries.length > 0) return inMemoryDeliveries;
   try {
     if (fs.existsSync(STORAGE_FILE)) {
       const data = fs.readFileSync(STORAGE_FILE, 'utf-8');
       inMemoryDeliveries = JSON.parse(data);
     }
-  } catch (e) {
-    // fallback to empty
-  }
+  } catch (e) {}
   return inMemoryDeliveries;
 }
 
 function saveDeliveries(list) {
   inMemoryDeliveries = list;
+  try {
+    if (fs.existsSync(DB_FILE)) {
+      const db = JSON.parse(fs.readFileSync(DB_FILE, 'utf-8'));
+      db.deliveries = list;
+      fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2), 'utf-8');
+    }
+  } catch (e) {}
   try {
     fs.writeFileSync(STORAGE_FILE, JSON.stringify(list), 'utf-8');
   } catch (e) {}

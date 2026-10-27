@@ -1,0 +1,111 @@
+{
+  "customers": [
+    {
+      "id": "cust_1",
+      "name": "முத்துசாமி (Muthusamy)",
+      "houseNo": "14/A",
+      "street": "பாரதியார் வீதி (Bharathiyar St)",
+      "phone": "9840112345",
+      "defaultMorningQty": 1.0,
+      "defaultEveningQty": 0.5,
+      "ratePerLitre": 56,
+      "routeOrder": 1,
+      "notes": "கேட்டில் உள்ள பாத்திரத்தில் ஊற்றவும் (Leave in gate can)",
+      "startDate": "2026-10-01",
+      "registeredAt": "2026-10-01T00:00:00.000Z",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "cust_2",
+      "name": "சுந்தரம் ஆசிரியர் (Sundaram Teacher)",
+      "houseNo": "28",
+      "street": "பாரதியார் வீதி (Bharathiyar St)",
+      "phone": "9789223456",
+      "defaultMorningQty": 1.5,
+      "defaultEveningQty": 0.0,
+      "ratePerLitre": 56,
+      "routeOrder": 2,
+      "notes": "மணி அடிக்கவும் (Ring bell)",
+      "startDate": "2026-10-01",
+      "registeredAt": "2026-10-01T00:00:00.000Z",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "cust_3",
+      "name": "விஜயலட்சுமி அம்மாள் (Vijayalakshmi)",
+      "houseNo": "5",
+      "street": "அம்மன் கோவில் தெரு (Amman Kovil St)",
+      "phone": "9443334567",
+      "defaultMorningQty": 0.5,
+      "defaultEveningQty": 0.5,
+      "ratePerLitre": 56,
+      "routeOrder": 3,
+      "notes": "பூனை வராதபடி மூடி வைக்கவும்",
+      "startDate": "2026-10-01",
+      "registeredAt": "2026-10-01T00:00:00.000Z",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "cust_4",
+      "name": "சரவணன் மெடிக்கல்ஸ் (Saravanan)",
+      "houseNo": "42",
+      "street": "மெயின் ரோடு (Main Road)",
+      "phone": "9944445678",
+      "defaultMorningQty": 2.0,
+      "defaultEveningQty": 1.0,
+      "ratePerLitre": 54,
+      "routeOrder": 4,
+      "notes": "கடை வாசலில் வைக்கவும்",
+      "startDate": "2026-10-01",
+      "registeredAt": "2026-10-01T00:00:00.000Z",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "cust_5",
+      "name": "கார்த்திக் இன்ஜினியர் (Karthik)",
+      "houseNo": "108",
+      "street": "நேரு நகர் (Nehru Nagar)",
+      "phone": "9841556789",
+      "defaultMorningQty": 1.0,
+      "defaultEveningQty": 0.0,
+      "ratePerLitre": 56,
+      "routeOrder": 5,
+      "notes": "கூகுள் பே மூலம் மாதாந்திர கட்டணம் செலுத்துவார்",
+      "startDate": "2026-10-01",
+      "registeredAt": "2026-10-01T00:00:00.000Z",
+      "status": "ACTIVE"
+    }
+  ],
+  "deliveries": [],
+  "extraRequests": [
+    {
+      "id": "req_demo_1",
+      "customerId": "cust_1",
+      "customerName": "முத்துசாமி (Muthusamy)",
+      "houseNo": "14/A",
+      "phone": "9840112345",
+      "date": "2026-10-28",
+      "shift": "MORNING",
+      "extraLitres": 1.0,
+      "reason": "Guests visiting (விருந்தினர் வருகை)",
+      "status": "PENDING",
+      "createdAt": "2026-10-27T00:00:00.000Z"
+    }
+  ],
+  "leaveRequests": [
+    {
+      "id": "leave_demo_1",
+      "customerId": "cust_2",
+      "customerName": "சுந்தரம் ஆசிரியர் (Sundaram)",
+      "houseNo": "28",
+      "phone": "9789223456",
+      "fromDate": "2026-10-28",
+      "toDate": "2026-10-28",
+      "shift": "BOTH",
+      "reason": "சொந்த ஊர் செல்கிறோம் (Going to native)",
+      "status": "PENDING",
+      "createdAt": "2026-10-27T00:00:00.000Z"
+    }
+  ],
+  "notifications": []
+}
